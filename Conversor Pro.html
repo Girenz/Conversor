@@ -1,0 +1,2804 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Conversor Pro">
+<meta name="application-name" content="Conversor Pro">
+<meta name="theme-color" content="#ff6a00">
+<meta name="description" content="Suite de cálculo industrial — Calibre, Presión, Gramaje, Encogimiento, AQL">
+<link rel="manifest" id="pwa-manifest">
+<title>Conversor Pro</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #000000;
+    --sidebar-bg: #0a0a0a;
+    --sidebar-w: 72px;
+    --sidebar-w-open: 220px;
+    --accent: #ff6a00;
+    --accent2: #ff9240;
+    --neon: #ff6a00;
+    --gold: #ffb347;
+    --panel: #0f0f0f;
+    --panel2: #080808;
+    --border: #2a1500;
+    --text: #f5f5f5;
+    --muted: #888888;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Inter', sans-serif;
+    --radius: 12px;
+  }
+
+  /* ── TEMA CLARO ── */
+  :root.light {
+    --bg: #f0f0f0;
+    --sidebar-bg: #ffffff;
+    --panel: #ffffff;
+    --panel2: #f5f5f5;
+    --border: #ffd0a0;
+    --text: #1a1a1a;
+    --muted: #666666;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; transition: background-color 0.3s, border-color 0.3s, color 0.3s; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    display: flex;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: var(--sidebar-w);
+    min-height: 100vh;
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 20px 0;
+    position: fixed;
+    left: 0; top: 0;
+    z-index: 100;
+    overflow: hidden;
+    transition: width 0.35s cubic-bezier(.4,0,.2,1);
+  }
+  .sidebar.open { width: var(--sidebar-w-open); }
+
+  .sidebar-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 18px 24px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  .logo-icon {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, #ff6a00, #ff9240);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+  }
+  .logo-text {
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--accent2);
+    line-height: 1.2;
+    opacity: 0;
+    transition: opacity 0.2s 0.1s;
+  }
+  .sidebar.open .logo-text { opacity: 1; }
+  .sidebar.open .nav-label { opacity: 1; }
+  nav { flex: 1; padding-top: 12px; }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 13px 18px;
+    cursor: pointer;
+    border-left: 3px solid transparent;
+    transition: all 0.2s;
+    white-space: nowrap;
+    overflow: hidden;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 500;
+    position: relative;
+  }
+  .nav-item:hover {
+    background: rgba(255,106,0,.12);
+    color: var(--accent2);
+    border-left-color: var(--accent);
+  }
+  .nav-item.active {
+    background: rgba(255,106,0,.18);
+    color: var(--accent2);
+    border-left-color: var(--accent);
+  }
+  .nav-icon { font-size: 20px; flex-shrink: 0; }
+  .nav-label { opacity: 0; transition: opacity 0.2s 0.05s; font-size: 13px; }
+
+  /* ── MAIN ── */
+  .main {
+    margin-left: var(--sidebar-w);
+    flex: 1;
+    padding: 32px 28px;
+    transition: margin-left 0.35s;
+    max-width: calc(100vw - var(--sidebar-w));
+  }
+
+  /* ── PAGE HEADER ── */
+  .page-header {
+    margin-bottom: 32px;
+  }
+  .page-eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--neon);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .page-title {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.5px;
+  }
+  .page-title span { color: var(--accent2); }
+
+  /* ── SECTIONS ── */
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+  .card-title {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--neon);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── CONVERTER UI ── */
+  .conv-grid {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 14px;
+    align-items: end;
+  }
+  .field-group { display: flex; flex-direction: column; gap: 6px; }
+  label {
+    font-size: 11px;
+    font-family: var(--mono);
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  input[type="number"], input[type="text"], input[type="date"], select {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 20px;
+    font-weight: 600;
+    padding: 12px 16px;
+    width: 100%;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    -moz-appearance: textfield;
+  }
+  /* Ocultar sugerencias del browser */
+  input:-webkit-autofill { -webkit-box-shadow: 0 0 0px 1000px var(--panel2) inset !important; -webkit-text-fill-color: var(--text) !important; }
+  input::-webkit-contacts-auto-fill-button,
+  input::-webkit-credentials-auto-fill-button { visibility: hidden; pointer-events: none; position: absolute; right: 0; }
+  input::-webkit-outer-spin-button,
+  input::-webkit-inner-spin-button { -webkit-appearance: none; }
+  input:focus, select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(255,106,0,.2);
+  }
+  select { font-size: 14px; cursor: pointer; }
+
+  .swap-btn {
+    background: rgba(255,106,0,.15);
+    border: 1px solid var(--accent);
+    border-radius: 50%;
+    color: var(--accent2);
+    font-size: 20px;
+    width: 46px; height: 46px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+    margin-bottom: 2px;
+    flex-shrink: 0;
+  }
+  .swap-btn:hover {
+    background: var(--accent);
+    color: #fff;
+    transform: rotate(180deg);
+  }
+
+  .result-badge {
+    margin-top: 16px;
+    background: rgba(255,106,0,.06);
+    border: 1px solid rgba(255,106,0,.2);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--neon);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .result-val { font-size: 22px; font-weight: 700; }
+  .result-unit { color: var(--muted); font-size: 13px; }
+
+  /* ── GRAMAJE ── */
+  .gram-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 14px;
+  }
+  .calc-btn {
+    grid-column: 1 / -1;
+    background: linear-gradient(135deg, #ff6a00, #cc4400);
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    padding: 14px;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+    text-transform: uppercase;
+  }
+  .calc-btn:hover { opacity: .88; }
+  .calc-btn:active { transform: scale(.98); }
+
+  .result-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 16px;
+    font-family: var(--mono);
+    font-size: 13px;
+  }
+  .result-table th {
+    text-align: left;
+    padding: 8px 12px;
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: 1px;
+    border-bottom: 1px solid var(--border);
+  }
+  .result-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(45,45,78,.5);
+  }
+  .result-table td.val {
+    color: var(--gold);
+    font-weight: 700;
+    font-size: 16px;
+  }
+
+  /* ── BARCODE ── */
+  /* ── MANUAL INPUT BARCODE ── */
+  .manual-bar {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+  }
+  .manual-bar input { font-size: 15px; }
+
+  /* ── THEME SWITCH ── */
+  .theme-switch-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 18px;
+    border-top: 1px solid var(--border);
+    margin-top: auto;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  .theme-icon { font-size: 17px; flex-shrink: 0; }
+  .theme-label {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+    opacity: 0;
+    transition: opacity 0.2s;
+    flex-shrink: 0;
+  }
+  .sidebar.open .theme-label { opacity: 1; }
+
+  .switch {
+    position: relative;
+    width: 38px;
+    height: 20px;
+    flex-shrink: 0;
+    margin-left: auto;
+  }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider {
+    position: absolute;
+    inset: 0;
+    background: #333;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: background 0.3s;
+  }
+  .slider::before {
+    content: '';
+    position: absolute;
+    width: 14px; height: 14px;
+    left: 3px; top: 3px;
+    background: #888;
+    border-radius: 50%;
+    transition: transform 0.3s, background 0.3s;
+  }
+  .switch input:checked + .slider { background: rgba(255,106,0,.35); border: 1px solid var(--accent); }
+  .switch input:checked + .slider::before { transform: translateX(18px); background: var(--accent); }
+
+  /* Overrides tema claro */
+  :root.light .result-badge {
+    background: rgba(255,106,0,.08);
+    border-color: rgba(255,106,0,.25);
+  }
+  :root.light .calc-btn {
+    color: #fff;
+  }
+  :root.light .btn-secondary {
+    background: rgba(0,0,0,.06);
+    border-color: #ddd;
+    color: var(--text);
+  }
+  :root.light .btn-secondary:hover { background: rgba(0,0,0,.1); }
+  :root.light .swap-btn {
+    background: rgba(255,106,0,.1);
+    color: var(--accent);
+  }
+  :root.light .result-table td,
+  :root.light .result-table th { border-color: #e8e8e8; }
+  :root.light .nav-item:hover { background: rgba(255,106,0,.08); }
+  :root.light .nav-item.active { background: rgba(255,106,0,.14); }
+  :root.light .h-tab { background: rgba(0,0,0,.05); border-color: #ddd; color: #555; }
+  :root.light .h-tab.active { background: rgba(255,106,0,.15); border-color: var(--accent); }
+  :root.light .history-item { background: rgba(0,0,0,.03); }
+  :root.light .history-item:hover { background: rgba(255,106,0,.08); }
+  :root.light .page-eyebrow { color: var(--accent); }
+  :root.light label { color: #555; }
+  :root.light .card-title { color: #cc5500; }
+  :root.light .slider { background: #ccc; }
+
+  /* ── INDICADOR BD ── */
+  .bd-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 18px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  .bd-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #555;
+    flex-shrink: 0;
+    transition: background 0.3s;
+    box-shadow: 0 0 0 0 rgba(0,200,80,0);
+  }
+  .bd-dot.online  { background: #22c55e; box-shadow: 0 0 6px rgba(34,197,94,.6); }
+  .bd-dot.offline { background: #ef4444; box-shadow: 0 0 6px rgba(239,68,68,.6); }
+  .bd-dot.pending { background: #fbbf24; animation: pulse-dot .8s infinite; }
+  @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:.3} }
+  .bd-label { opacity: 0; transition: opacity 0.2s; }
+  .sidebar.open .bd-label { opacity: 1; }
+
+  /* ── OFFLINE BADGE ── */
+  .offline-badge {
+    display: none;
+    position: fixed;
+    top: 14px; right: 16px;
+    background: rgba(239,68,68,.15);
+    border: 1px solid rgba(239,68,68,.4);
+    color: #f87171;
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    z-index: 200;
+    font-weight: 600;
+    gap: 6px;
+    align-items: center;
+    cursor: pointer;
+  }
+  .offline-badge.visible { display: flex; }
+
+  /* ── CAMPO NOTAS ── */
+  .notas-field {
+    margin-top: 10px;
+  }
+  .notas-field input {
+    font-size: 13px !important;
+    padding: 8px 12px !important;
+    color: var(--muted) !important;
+  }
+  .notas-field input::placeholder { color: rgba(255,106,0,.3); }
+
+  /* ── CONFIGURACIÓN ── */
+  .config-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 0;
+    gap: 16px;
+  }
+  .config-info { flex: 1; }
+  .config-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+  .config-desc  { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  .config-divider { height: 1px; background: var(--border); }
+
+  /* ── MODO COMPACTO ── */
+  body.compacto .main { padding: 16px 12px; }
+  body.compacto .card { padding: 14px 16px; margin-bottom: 12px; }
+  body.compacto .page-title { font-size: 20px; }
+  body.compacto .page-header { margin-bottom: 16px; }
+  body.compacto input[type="number"],
+  body.compacto input[type="text"],
+  body.compacto input[type="date"],
+  body.compacto select { font-size: 15px !important; padding: 8px 12px !important; }
+  body.compacto .result-val { font-size: 18px !important; }
+  body.compacto .calc-btn { padding: 10px; font-size: 13px; }
+  body.compacto .btn { padding: 7px 12px; font-size: 12px; }
+
+  /* ── HISTORIAL TABS ── */
+  .h-tab {
+    background: rgba(255,255,255,.06);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 7px 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .h-tab:hover { background: rgba(255,106,0,.15); color: var(--accent2); }
+  .h-tab.active {
+    background: rgba(255,106,0,.2);
+    border-color: var(--accent);
+    color: var(--accent2);
+  }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* mobile responsive */
+  @media (max-width: 600px) {
+    .main { padding: 20px 14px; }
+    .conv-grid { grid-template-columns: 1fr; }
+    .swap-btn { transform: rotate(90deg); margin: auto; }
+    .swap-btn:hover { transform: rotate(270deg); }
+  }
+</style>
+</head>
+<body>
+<!-- Trampa autocomplete — evita barra de contraseñas del browser -->
+<div style="display:none;visibility:hidden;height:0;overflow:hidden" aria-hidden="true">
+  <input type="text" name="username" tabindex="-1" autocomplete="username">
+  <input type="password" name="password" tabindex="-1" autocomplete="current-password">
+</div>
+
+<!-- SIDEBAR -->
+<!-- Overlay girar pantalla -->
+<div id="rotate-msg" style="display:none;position:fixed;inset:0;z-index:9999;background:#000;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:20px">
+  <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#ff6a00" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="animation:spin-phone 2s ease-in-out infinite">
+    <rect x="5" y="2" width="14" height="20" rx="2"/>
+    <path d="M12 18h.01"/>
+  </svg>
+  <div style="font-family:'JetBrains Mono',monospace;font-size:14px;color:#ff6a00;letter-spacing:2px;text-transform:uppercase">Gira tu dispositivo</div>
+  <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#555;letter-spacing:1px">La app funciona en modo horizontal</div>
+</div>
+
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-head">
+    <canvas id="sidebar-logo" width="36" height="36" style="border-radius:8px;flex-shrink:0"></canvas>
+    <div class="logo-text">CONVERSOR<br><span style="color:var(--muted);font-weight:400">Pro</span></div>
+    <button id="toggle-btn" onclick="toggleSidebar()" title="Contraer menú" style="
+      margin-left:auto; background:none; border:none; color:var(--muted);
+      cursor:pointer; font-size:18px; flex-shrink:0; padding:4px;
+      transition:transform 0.35s; display:none;
+    ">‹</button>
+  </div>
+  <nav>
+    <div class="nav-item active" onclick="showSection('calibre')">
+      <span class="nav-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 8h18v8H3z"/><path d="M7 8V6"/><path d="M12 8V5"/><path d="M17 8V6"/>
+          <path d="M3 12h4"/><line x1="9" y1="12" x2="11" y2="12"/>
+          <circle cx="17" cy="12" r="2"/><path d="M19 12h2"/>
+        </svg>
+      </span>
+      <span class="nav-label">Calibre</span>
+    </div>
+    <div class="nav-item" onclick="showSection('presion')">
+      <span class="nav-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="9"/>
+          <path d="M12 7v5l3 2"/>
+          <path d="M7.5 4.5l1 1.5"/><path d="M16.5 4.5l-1 1.5"/>
+          <path d="M4 12H2"/><path d="M22 12h-2"/>
+          <path d="M12 21v-2"/>
+        </svg>
+      </span>
+      <span class="nav-label">Presión</span>
+    </div>
+    <div class="nav-item" onclick="showSection('gramaje')">
+      <span class="nav-icon">⚖️</span>
+      <span class="nav-label">Gramaje</span>
+    </div>
+    <div class="nav-item" onclick="showSection('encogimiento')">
+      <span class="nav-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <rect x="7" y="7" width="10" height="10" rx="1" stroke-dasharray="2 1"/>
+          <path d="M3 7l4 0"/><path d="M17 3l0 4"/>
+          <path d="M21 17l-4 0"/><path d="M7 21l0-4"/>
+        </svg>
+      </span>
+      <span class="nav-label">Encogimiento</span>
+    </div>
+    <div class="nav-item" onclick="showSection('munsell')">
+      <span class="nav-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+          <circle cx="12" cy="12" r="9"/>
+          <circle cx="12" cy="12" r="3"/>
+          <line x1="12" y1="3" x2="12" y2="9"/><line x1="12" y1="15" x2="12" y2="21"/>
+          <line x1="3" y1="12" x2="9" y2="12"/><line x1="15" y1="12" x2="21" y2="12"/>
+          <line x1="5.6" y1="5.6" x2="9.2" y2="9.2"/><line x1="14.8" y1="14.8" x2="18.4" y2="18.4"/>
+          <line x1="18.4" y1="5.6" x2="14.8" y2="9.2"/><line x1="9.2" y1="14.8" x2="5.6" y2="18.4"/>
+        </svg>
+      </span>
+      <span class="nav-label">Test Munsell</span>
+    </div>
+    <div class="nav-item" onclick="showSection('aql')">
+      <span class="nav-icon" style="font-family:var(--mono);font-size:11px;font-weight:800;color:var(--accent);letter-spacing:-0.5px;flex-shrink:0;width:22px;text-align:center">AQL</span>
+      <span class="nav-label">AQL</span>
+    </div>
+    <div class="nav-item" onclick="showSection('historial'); cargarHistorial()">
+      <span class="nav-icon">🗄️</span>
+      <span class="nav-label">Historial BD</span>
+    </div>
+    <div class="nav-item" onclick="showSection('configuracion')">
+      <span class="nav-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </span>
+      <span class="nav-label">Configuración</span>
+    </div>
+    <div class="nav-item" onclick="showSection('creditos'); initLogo(); animarCreditos()">
+      <span class="nav-icon">🏅</span>
+      <span class="nav-label">Créditos</span>
+    </div>
+
+    <!-- Switch tema dentro del nav -->
+    <div class="theme-switch-wrap">
+      <span class="theme-icon" id="theme-icon">
+        <svg id="icon-luna" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted)">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z"/>
+        </svg>
+        <svg id="icon-sol" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#ff8800;display:none">
+          <circle cx="12" cy="12" r="5"/>
+          <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+          <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+        </svg>
+      </span>
+      <span class="theme-label" id="theme-label">Tema oscuro</span>
+      <label class="switch">
+        <input type="checkbox" id="theme-toggle" onchange="toggleTema()">
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <!-- Indicador BD -->
+    <div class="bd-indicator">
+      <div class="bd-dot pending" id="bd-dot"></div>
+      <span class="bd-label" id="bd-label">Conectando...</span>
+    </div>
+
+  </nav>
+
+</aside>
+
+<!-- Badge offline flotante -->
+<div class="offline-badge" id="offline-badge" onclick="sincronizarOffline()">
+  <span>📡</span>
+  <span id="offline-count">0</span> pendientes — Sincronizar
+</div>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- PRESIÓN -->
+  <div class="section" id="sec-presion">
+    <div class="page-header">
+      <div class="page-eyebrow">// conversión</div>
+      <div class="page-title">Presión <span>· kPa ↔ PSI</span></div>
+    </div>
+    <div class="card">
+      <div class="card-title">🔵 Kilopascales ↔ PSI</div>
+      <div class="conv-grid">
+        <div class="field-group">
+          <label id="lbl-pre-a">Kilopascales (kPa)</label>
+          <input type="number" autocomplete="off" autocorrect="off" autocapitalize="off" inputmode="decimal" data-form-type="other" id="pre-a" placeholder="0.00" step="any" oninput="convertPresion('a')">
+        </div>
+        <button class="swap-btn" onclick="swapPresion()" title="Intercambiar">⇄</button>
+        <div class="field-group">
+          <label id="lbl-pre-b">PSI (lb/in²)</label>
+          <input type="number" autocomplete="off" autocorrect="off" autocapitalize="off" inputmode="decimal" data-form-type="other" id="pre-b" placeholder="0.00" step="any" oninput="convertPresion('b')">
+        </div>
+      </div>
+      <div class="result-badge">
+        <span>≈</span>
+        <span class="result-val" id="pre-res-val">—</span>
+        <span class="result-unit" id="pre-res-unit"></span>
+        <button class="btn btn-primary" onclick="guardarPresion()" style="margin-left:auto;padding:6px 14px;font-size:12px">💾 Guardar</button>
+      </div>
+      <div class="notas-field">
+        <input type="text" autocomplete="off" autocorrect="off" autocapitalize="off" data-form-type="other" id="pre-notas" placeholder="OP / Bobina (opcional)" style="width:100%">
+      </div>
+    </div>
+    <div class="card" style="background:rgba(255,106,0,.06); border-color:rgba(255,106,0,.2)">
+      <div class="card-title" style="color:var(--accent2)">📖 Referencia rápida</div>
+      <table class="result-table">
+        <tr><th>kPa</th><th>PSI</th><th>Contexto</th></tr>
+        <tr><td>6.9</td><td class="val">1.0</td><td style="color:var(--muted)">Presión mínima</td></tr>
+        <tr><td>101.3</td><td class="val">14.7</td><td style="color:var(--muted)">Presión atmosférica</td></tr>
+        <tr><td>207</td><td class="val">30.0</td><td style="color:var(--muted)">Presión media</td></tr>
+        <tr><td>345</td><td class="val">50.0</td><td style="color:var(--muted)">Presión de trabajo std</td></tr>
+        <tr><td>690</td><td class="val">100.1</td><td style="color:var(--muted)">Alta presión</td></tr>
+        <tr><td>1379</td><td class="val">200.0</td><td style="color:var(--muted)">Presión de prueba</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- GRAMAJE -->
+  <div class="section" id="sec-gramaje">
+    <div class="page-header">
+      <div class="page-eyebrow">// cálculo</div>
+      <div class="page-title">Gramaje <span>· g/m²</span></div>
+    </div>
+    <div class="card">
+      <div class="card-title">⚖️ Cálculo de gramaje por área</div>
+      <div class="gram-grid">
+        <div class="field-group">
+          <label>Peso de muestra (g)</label>
+          <input type="number" autocomplete="off" autocorrect="off" autocapitalize="off" inputmode="decimal" data-form-type="other" id="g-peso" placeholder="0.000" step="any">
+        </div>
+        <div class="field-group">
+          <label>Ancho (cm)</label>
+          <input type="number" autocomplete="off" autocorrect="off" autocapitalize="off" inputmode="decimal" data-form-type="other" id="g-ancho" placeholder="0.00" step="any">
+        </div>
+        <div class="field-group">
+          <label>Largo (cm)</label>
+          <input type="number" autocomplete="off" autocorrect="off" autocapitalize="off" inputmode="decimal" data-form-type="other" id="g-largo" placeholder="0.00" step="any">
+        </div>
+        <div class="field-group">
+          <label>Muestras (n)</label>
+          <input type="number" autocomplete="off" autocorrect="off" autocapitalize="off" inputmode="decimal" data-form-type="other" id="g-n" placeholder="1" value="1" min="1">
+        </div>
+        <button class="calc-btn" onclick="calcGramaje()">⚡ Calcular gramaje</button>
+      </div>
+      <div id="gram-result" style="display:none">
+        <table class="result-table">
+          <tr><th>Parámetro</th><th>Valor</th></tr>
+          <tr><td>Ancho × Largo</td><td class="val" id="g-area">—</td></tr>
+          <tr><td>Peso promedio / muestra</td><td class="val" id="g-prom">—</td></tr>
+          <tr><td style="color:var(--neon);font-weight:700">Gramaje (g/m²)</td><td class="val" style="color:var(--gold);font-size:22px" id="g-gsm">—</td></tr>
+          <tr><td>Fórmula aplicada</td><td class="val" style="color:var(--muted);font-size:12px" id="g-formula">—</td></tr>
+        </table>
+        <button id="btn-guardar-gramaje" class="btn btn-primary" onclick="guardarGramaje()" style="display:none;margin-top:12px">💾 Guardar en base de datos</button>
+        <div class="notas-field" id="notas-gramaje-wrap" style="display:none">
+          <input type="text" autocomplete="off" autocorrect="off" autocapitalize="off" data-form-type="other" id="gram-notas" placeholder="OP / Bobina (opcional)" style="width:100%">
+        </div>
+      </div>
+    </div>
+    <div class="card" style="background:rgba(255,179,71,.04); border-color:rgba(255,179,71,.15)">
+      <div class="card-title" style="color:var(--gold)">📐 Tamaños estándar de muestra</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px">
+        <button class="btn btn-secondary" onclick="setMuestra(10,10)">10×10 cm</button>
+        <button class="btn btn-secondary" onclick="setMuestra(15,15)">15×15 cm</button>
+        <button class="btn btn-secondary" onclick="setMuestra(20,20)">20×20 cm</button>
+        <button class="btn btn-secondary" onclick="setMuestra(10,15)">10×15 cm</button>
+        <button class="btn btn-secondary" onclick="setMuestra(25,25)">25×25 cm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CALIBRE -->
+  <div class="section active" id="sec-calibre">
+    <div class="page-header">
+      <div class="page-eyebrow">// cálculo</div>
+      <div class="page-title">Calibre</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🔩 Calibre total ÷ láminas → μm por cavidad</div>
+      <div class="gram-grid">
+        <div class="field-group">
+          <label>Calibre total medido (milésimas)</label>
+          <input type="number" autocomplete="off" autocorrect="off" autocapitalize="off" inputmode="decimal" data-form-type="other" id="cv-calibre" placeholder="0.000" step="any" oninput="calcCalibre()">
+        </div>
+        <div class="field-group">
+          <label>Cantidad de láminas (n)</label>
+          <input type="number" autocomplete="off" autocorrect="off" autocapitalize="off" inputmode="decimal" data-form-type="other" id="cv-n" placeholder="1" value="1" min="1" oninput="calcCalibre()">
+        </div>
+      </div>
+
+      <div id="cv-live" style="display:none; margin-top:20px">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px">
+          <div class="result-badge" style="flex-direction:column; align-items:flex-start; gap:4px">
+            <span style="font-size:10px; letter-spacing:1.5px; color:var(--muted)">CALIBRE / MUESTRA</span>
+            <div>
+              <span class="result-val" id="cv-mil-res">—</span>
+              <span class="result-unit"> mil</span>
+            </div>
+          </div>
+          <div class="result-badge" style="flex-direction:column; align-items:flex-start; gap:4px; background:rgba(255,146,64,.08); border-color:rgba(255,146,64,.25)">
+            <span style="font-size:10px; letter-spacing:1.5px; color:var(--muted)">EN MICRAS (μm)</span>
+            <div>
+              <span class="result-val" id="cv-um-res" style="color:var(--accent2)">—</span>
+              <span class="result-unit" style="color:var(--accent2)"> μm</span>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:10px; padding:10px 14px; background:rgba(255,179,71,.05); border:1px solid rgba(255,179,71,.15); border-radius:8px; font-family:var(--mono); font-size:12px; color:var(--muted)">
+          <span style="color:var(--gold)">Fórmula:</span>
+          <span id="cv-formula-txt">—</span>
+        </div>
+        <div style="margin-top:12px; display:flex; gap:10px">
+          <button class="btn btn-secondary" onclick="addCalibresRow()" style="flex:1">＋ Guardar en registro</button>
+          <button class="btn btn-danger" onclick="limpiarCalibre()" style="padding:10px 14px">↺ Limpiar</button>
+        </div>
+        <div class="notas-field">
+          <input type="text" autocomplete="off" autocorrect="off" autocapitalize="off" data-form-type="other" id="cv-notas" placeholder="OP / Bobina (opcional)" style="width:100%">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📋 Registro de mediciones</div>
+      <div style="display:flex; justify-content:space-between; margin-bottom:12px; align-items:center">
+        <span style="color:var(--muted); font-size:13px" id="cv-count">0 mediciones</span>
+        <div style="display:flex; gap:8px">
+          <button class="btn btn-secondary" onclick="copyCalibre()" style="padding:6px 12px; font-size:12px">📋 Copiar</button>
+          <button class="btn btn-danger" onclick="clearCalibre()" style="padding:6px 12px; font-size:12px">🗑 Limpiar todo</button>
+        </div>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="result-table" id="cv-table" style="min-width:400px">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Calibre total (mil)</th>
+              <th>Muestras (n)</th>
+              <th>mil / cavidad</th>
+              <th style="color:var(--accent2)">μm / cavidad</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="cv-tbody">
+            <tr id="cv-empty-row">
+              <td colspan="6" style="text-align:center; padding:24px; color:var(--muted); font-size:13px">Sin mediciones aún</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div id="cv-avg-box" style="display:none; margin-top:14px; padding:14px 16px; background:rgba(255,106,0,.05); border:1px solid rgba(255,106,0,.2); border-radius:8px; font-family:var(--mono); display:flex; gap:24px; flex-wrap:wrap">
+        <div>
+          <div style="font-size:10px; color:var(--muted); letter-spacing:1.5px; margin-bottom:4px">PROMEDIO μm</div>
+          <div style="font-size:22px; font-weight:700; color:var(--neon)" id="cv-avg-um">—</div>
+        </div>
+        <div>
+          <div style="font-size:10px; color:var(--muted); letter-spacing:1.5px; margin-bottom:4px">PROMEDIO mil</div>
+          <div style="font-size:22px; font-weight:700; color:var(--gold)" id="cv-avg-mil">—</div>
+        </div>
+        <div>
+          <div style="font-size:10px; color:var(--muted); letter-spacing:1.5px; margin-bottom:4px">TOTAL MEDICIONES</div>
+          <div style="font-size:22px; font-weight:700; color:var(--accent2)" id="cv-avg-n">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ENCOGIMIENTO -->
+  <div class="section" id="sec-encogimiento">
+    <div class="page-header">
+      <div class="page-eyebrow">// cálculo</div>
+      <div class="page-title">Encogimiento <span>· Termoencogible</span></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📐 Muestra 50×50 mm</div>
+
+      <!-- Diagrama visual -->
+      <div style="display:flex;justify-content:center;margin-bottom:20px">
+        <div style="position:relative;width:180px;height:180px">
+          <!-- Cuadro principal -->
+          <div style="position:absolute;inset:0;border:2px solid rgba(255,106,0,.5);border-radius:4px;background:rgba(255,106,0,.04)"></div>
+          <!-- Flecha MD vertical -->
+          <div style="position:absolute;top:50%;left:8px;transform:translateY(-50%);font-family:var(--mono);font-size:11px;font-weight:700;color:var(--accent);display:flex;flex-direction:column;align-items:center;gap:2px">
+            <span>↑</span>
+            <span style="writing-mode:vertical-rl;text-orientation:mixed;letter-spacing:3px">MD</span>
+            <span>↓</span>
+          </div>
+          <!-- Flecha TD horizontal -->
+          <div style="position:absolute;bottom:10px;left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:11px;font-weight:700;color:var(--accent2);letter-spacing:2px;white-space:nowrap">← TD →</div>
+          <!-- Etiqueta 50x50 esquina -->
+          <div style="position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:9px;color:rgba(255,106,0,.4)">50×50 mm</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+
+        <!-- MD -->
+        <div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;border-bottom:1px solid var(--border);padding-bottom:6px">↔ Dirección MD</div>
+          <div class="field-group" style="margin-bottom:10px">
+            <label>Medida final MD (mm)</label>
+            <input type="number" autocomplete="off" autocorrect="off" autocapitalize="off" inputmode="decimal" data-form-type="other" id="enc-md-final" placeholder="0.00" step="any" oninput="calcEncogimiento()">
+          </div>
+          <div id="enc-md-result" style="display:none">
+            <div class="result-badge" style="flex-direction:column;align-items:flex-start;gap:4px">
+              <span style="font-size:10px;letter-spacing:1.5px;color:var(--muted)">ENCOGIMIENTO MD</span>
+              <div>
+                <span class="result-val" id="enc-md-pct" style="color:var(--accent)">—</span>
+                <span class="result-unit"> %</span>
+              </div>
+              <div style="font-size:11px;color:var(--muted);font-family:var(--mono)" id="enc-md-mm">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TD -->
+        <div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--accent2);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;border-bottom:1px solid var(--border);padding-bottom:6px">↕ Dirección TD</div>
+          <div class="field-group" style="margin-bottom:10px">
+            <label>Medida final TD (mm)</label>
+            <input type="number" autocomplete="off" autocorrect="off" autocapitalize="off" inputmode="decimal" data-form-type="other" id="enc-td-final" placeholder="0.00" step="any" oninput="calcEncogimiento()">
+          </div>
+          <div id="enc-td-result" style="display:none">
+            <div class="result-badge" style="flex-direction:column;align-items:flex-start;gap:4px;background:rgba(255,146,64,.08);border-color:rgba(255,146,64,.25)">
+              <span style="font-size:10px;letter-spacing:1.5px;color:var(--muted)">ENCOGIMIENTO TD</span>
+              <div>
+                <span class="result-val" id="enc-td-pct" style="color:var(--accent2)">—</span>
+                <span class="result-unit"> %</span>
+              </div>
+              <div style="font-size:11px;color:var(--muted);font-family:var(--mono)" id="enc-td-mm">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Fórmula -->
+      <div style="margin-top:14px;padding:10px 14px;background:rgba(255,179,71,.05);border:1px solid rgba(255,179,71,.15);border-radius:8px;font-family:var(--mono);font-size:12px;color:var(--muted)">
+        <span style="color:var(--gold)">Fórmula:</span>
+        <span> % encogimiento = ((50 − longitud final) ÷ 50) × 100</span>
+      </div>
+      <div style="margin-top:8px;font-family:var(--mono);font-size:11px;color:rgba(255,106,0,.5)">
+        Longitud inicial = 50 mm · Ingresa la longitud final después del encogimiento
+      </div>
+
+      <div style="margin-top:14px;display:flex;gap:10px">
+        <button class="btn btn-secondary" onclick="addEncogimientoRow()" style="flex:1">＋ Guardar en registro</button>
+        <button class="btn btn-danger" onclick="limpiarEncogimiento()" style="padding:10px 14px">↺ Limpiar</button>
+      </div>
+      <div class="notas-field">
+        <input type="text" autocomplete="off" autocorrect="off" autocapitalize="off" data-form-type="other" id="enc-notas" placeholder="OP / Bobina (opcional)" style="width:100%">
+      </div>
+    </div>
+
+    <!-- Tabla registro -->
+    <div class="card">
+      <div class="card-title">📋 Registro de mediciones</div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:12px;align-items:center">
+        <span style="color:var(--muted);font-size:13px" id="enc-count">0 mediciones</span>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary" onclick="copyEncogimiento()" style="padding:6px 12px;font-size:12px">📋 Copiar</button>
+          <button class="btn btn-danger" onclick="clearEncogimiento()" style="padding:6px 12px;font-size:12px">🗑 Limpiar todo</button>
+        </div>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="result-table" style="min-width:460px">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Final MD (mm)</th>
+              <th>% MD</th>
+              <th>Final TD (mm)</th>
+              <th>% TD</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="enc-tbody">
+            <tr><td colspan="6" style="text-align:center;padding:24px;color:var(--muted);font-size:13px">Sin mediciones aún</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div id="enc-avg-box" style="display:none;margin-top:14px;padding:14px 16px;background:rgba(255,106,0,.05);border:1px solid rgba(255,106,0,.2);border-radius:8px;font-family:var(--mono);display:flex;gap:24px;flex-wrap:wrap">
+        <div>
+          <div style="font-size:10px;color:var(--muted);letter-spacing:1.5px;margin-bottom:4px">PROM. % MD</div>
+          <div style="font-size:22px;font-weight:700;color:var(--accent)" id="enc-avg-md">—</div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--muted);letter-spacing:1.5px;margin-bottom:4px">PROM. % TD</div>
+          <div style="font-size:22px;font-weight:700;color:var(--accent2)" id="enc-avg-td">—</div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--muted);letter-spacing:1.5px;margin-bottom:4px">TOTAL</div>
+          <div style="font-size:22px;font-weight:700;color:var(--gold)" id="enc-avg-n">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MUNSELL -->
+  <div class="section" id="sec-munsell">
+    <div class="page-header">
+      <div class="page-eyebrow">// evaluación</div>
+      <div class="page-title">Test <span>· Munsell</span></div>
+    </div>
+    <div class="card" style="text-align:center;padding:48px 24px">
+      <!-- Ícono cromático decorativo -->
+      <div style="margin:0 auto 28px;width:100px;height:100px;position:relative">
+        <svg viewBox="0 0 100 100" width="100" height="100">
+          <defs>
+            <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#ff6a00"/><stop offset="100%" stop-color="#ffb347"/></linearGradient>
+          </defs>
+          <!-- Segmentos de color círculo cromático -->
+          <path d="M50,50 L50,8 A42,42 0 0,1 85.4,21.8 Z" fill="#ff0000" opacity=".85"/>
+          <path d="M50,50 L85.4,21.8 A42,42 0 0,1 92,50 Z" fill="#ff6600" opacity=".85"/>
+          <path d="M50,50 L92,50 A42,42 0 0,1 85.4,78.2 Z" fill="#ffcc00" opacity=".85"/>
+          <path d="M50,50 L85.4,78.2 A42,42 0 0,1 50,92 Z" fill="#66cc00" opacity=".85"/>
+          <path d="M50,50 L50,92 A42,42 0 0,1 14.6,78.2 Z" fill="#00aa44" opacity=".85"/>
+          <path d="M50,50 L14.6,78.2 A42,42 0 0,1 8,50 Z" fill="#0088cc" opacity=".85"/>
+          <path d="M50,50 L8,50 A42,42 0 0,1 14.6,21.8 Z" fill="#4444ff" opacity=".85"/>
+          <path d="M50,50 L14.6,21.8 A42,42 0 0,1 50,8 Z" fill="#aa00ff" opacity=".85"/>
+          <!-- Centro negro -->
+          <circle cx="50" cy="50" r="18" fill="#0a0a0a" stroke="rgba(255,106,0,.3)" stroke-width="1.5"/>
+          <text x="50" y="55" text-anchor="middle" font-family="monospace" font-size="10" font-weight="700" fill="#ff6a00">M</text>
+        </svg>
+      </div>
+
+      <div style="font-size:20px;font-weight:700;color:var(--text);margin-bottom:8px">Farnsworth-Munsell</div>
+      <div style="font-family:var(--mono);font-size:13px;color:var(--muted);margin-bottom:32px;max-width:380px;margin-left:auto;margin-right:auto;line-height:1.7">
+        Test de discriminación cromática. Evalúa la capacidad de ordenar tonos en secuencia correcta de color.
+      </div>
+
+      <!-- Botón que redirige a tu URL -->
+      <a id="munsell-link" href="TU_URL_AQUÍ" target="_blank" rel="noopener"
+         style="display:inline-flex;align-items:center;gap:10px;background:linear-gradient(135deg,#ff6a00,#cc4400);color:#fff;font-family:var(--mono);font-size:14px;font-weight:700;padding:14px 32px;border-radius:10px;text-decoration:none;letter-spacing:1px;transition:opacity .2s;box-shadow:0 4px 20px rgba(255,106,0,.35)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+        INICIAR TEST
+      </a>
+
+      <div style="margin-top:16px;font-family:var(--mono);font-size:11px;color:rgba(255,106,0,.4)">
+        <!-- Línea 👇 es donde insertas tu URL (también en el atributo href del botón de arriba) -->
+        Se abrirá en una nueva pestaña
+      </div>
+    </div>
+  </div>
+
+  </div>
+
+  <!-- AQL -->
+  <div class="section" id="sec-aql">
+    <div class="page-header">
+      <div class="page-eyebrow">// nivel S-3 · MIL-STD-105E</div>
+      <div class="page-title">Cálculo de <span>Análisis por Lote</span></div>
+    </div>
+
+    <!-- Calculadora -->
+    <div class="card">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
+        <div class="field-group">
+          <label>Tipo de producto</label>
+          <select id="aql-tipo" onchange="calcAQL()" style="font-size:14px;padding:10px 12px">
+            <option value="">— Seleccionar —</option>
+            <option value="bobinas">Bobinas</option>
+            <option value="millares">Millares</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label id="aql-cant-label">Cantidad del lote</label>
+          <input type="number" autocomplete="off" autocorrect="off" autocapitalize="off" inputmode="decimal" data-form-type="other" id="aql-cantidad" placeholder="" min="1" oninput="calcAQL()" disabled style="opacity:.4;cursor:not-allowed">
+        </div>
+      </div>
+
+      <div id="aql-resultado" style="display:none">
+        <div style="text-align:center;background:rgba(255,106,0,.1);border:2px solid var(--accent);border-radius:10px;padding:24px">
+          <div style="font-size:13px;color:var(--muted);font-family:var(--mono);letter-spacing:1.5px;margin-bottom:8px">MUESTRAS A ANALIZAR</div>
+          <div style="font-size:72px;font-weight:900;color:var(--accent);font-family:var(--mono);line-height:1" id="aql-res-muestras">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabla de referencia AQL -->
+    <div class="card" style="padding:16px 20px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:1px">Tabla de referencia S-3</div>
+        <button id="btn-tabla-aql" onclick="toggleTablaAQL()" class="btn btn-secondary" style="padding:6px 14px;font-size:12px;display:flex;align-items:center;gap:6px">
+          <span id="tabla-aql-icon">▼</span> Ver tabla
+        </button>
+      </div>
+      <div id="tabla-aql-wrap" style="display:none;margin-top:14px;overflow-x:auto">
+        <table class="result-table" style="min-width:280px;font-size:12px">
+          <thead>
+            <tr>
+              <th>Cantidad en lote</th>
+              <th style="text-align:center">Muestras a analizar</th>
+            </tr>
+          </thead>
+          <tbody id="aql-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- HISTORIAL -->
+  <div class="section" id="sec-historial">
+    <div class="page-header">
+      <div class="page-eyebrow">// base de datos</div>
+      <div class="page-title">Historial <span>· Registros</span></div>
+    </div>
+
+    <!-- Controles -->
+    <div class="card" style="padding:16px 20px">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <div class="field-group" style="flex:1;min-width:140px">
+          <label>Desde</label>
+          <input type="date" autocomplete="off" id="h-desde" style="font-size:13px;padding:8px 12px">
+        </div>
+        <div class="field-group" style="flex:1;min-width:140px">
+          <label>Hasta</label>
+          <input type="date" autocomplete="off" id="h-hasta" style="font-size:13px;padding:8px 12px">
+        </div>
+        <div class="field-group" style="flex:2;min-width:180px">
+          <label>Buscar por OP / Notas</label>
+          <div style="position:relative">
+            <input type="text" autocomplete="off" data-form-type="other" id="h-buscar"
+              placeholder="Ej: OP-1234 o bobina..."
+              style="font-size:13px;padding:8px 12px 8px 36px;width:100%"
+              oninput="filtrarHistorial()">
+            <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px;pointer-events:none">🔎</span>
+            <button id="h-clear-search" onclick="limpiarBusqueda()" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;line-height:1;padding:2px">✕</button>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:flex-end;padding-bottom:2px;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="cargarHistorial()">🔍 Consultar</button>
+          <button class="btn btn-secondary" onclick="exportarCSV()">📥 CSV</button>
+          <button class="btn btn-secondary" onclick="exportarPDF()">📄 PDF</button>
+          <button class="btn btn-secondary" onclick="exportarTodoCSV()" style="border-color:var(--accent);color:var(--accent)">📥 Todo CSV</button>
+          <button class="btn btn-secondary" onclick="exportarTodoPDF()" style="border-color:var(--accent);color:var(--accent)">📄 Todo PDF</button>
+        </div>
+      </div>
+      <!-- Tabs -->
+      <div style="display:flex;gap:6px;margin-top:16px;flex-wrap:wrap" id="h-tabs">
+        <button class="h-tab active" onclick="switchTab('presion')">🕛 Presión</button>
+        <button class="h-tab" onclick="switchTab('gramaje')">⚖️ Gramaje</button>
+        <button class="h-tab" onclick="switchTab('calibre')">🔩 Calibre</button>
+        <button class="h-tab" onclick="switchTab('encogimiento')">📐 Encogimiento</button>
+      </div>
+
+      <!-- Badge de resultados filtrados -->
+      <div id="h-filter-badge" style="display:none;margin-top:10px;padding:6px 12px;background:rgba(255,106,0,.1);border:1px solid rgba(255,106,0,.3);border-radius:6px;font-family:var(--mono);font-size:11px;color:var(--accent);display:flex;align-items:center;gap:8px">
+        <span>🔎</span>
+        <span id="h-filter-txt">Filtrando por: ""</span>
+        <button onclick="limpiarBusqueda()" style="background:none;border:none;color:var(--muted);cursor:pointer;margin-left:auto;font-size:13px">✕ Quitar filtro</button>
+      </div>
+    </div>
+
+    <!-- Tabla resultados -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <span class="card-title" style="margin-bottom:0" id="h-table-title">🕛 Presión</span>
+        <span style="font-family:var(--mono);font-size:12px;color:var(--muted)" id="h-count">—</span>
+      </div>
+      <div id="h-loading" style="text-align:center;padding:30px;color:var(--muted);font-family:var(--mono);font-size:13px;display:none">
+        ⏳ Cargando...
+      </div>
+      <div style="overflow-x:auto">
+        <table class="result-table" id="h-table" style="min-width:500px">
+          <thead id="h-thead"></thead>
+          <tbody id="h-tbody">
+            <tr><td colspan="10" style="text-align:center;padding:30px;color:var(--muted);font-size:13px">Selecciona un rango y presiona Consultar</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <!-- CRÉDITOS -->
+  <div class="section" id="sec-creditos" style="padding:0;position:relative;overflow:hidden;min-height:100vh;background:var(--bg)">
+
+    <!-- Canvas partículas de fondo -->
+    <canvas id="bg-particles" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:.6"></canvas>
+
+    <!-- Contenido -->
+    <div style="position:relative;z-index:2;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 24px">
+
+      <!-- Logo JS animado -->
+      <div id="cred-logo-wrap" style="opacity:0;transform:scale(.6);transition:opacity .8s ease, transform .8s cubic-bezier(.34,1.56,.64,1);margin-bottom:28px">
+        <canvas id="logo-canvas" width="320" height="320" style="filter:drop-shadow(0 0 40px rgba(255,106,0,.6))"></canvas>
+      </div>
+
+      <!-- Eyebrow -->
+      <div id="cred-eye" style="opacity:0;transform:translateY(20px);transition:opacity .6s ease, transform .6s ease;font-family:var(--mono);font-size:11px;letter-spacing:4px;color:var(--accent);text-transform:uppercase;margin-bottom:10px">
+        // Desarrollado por
+      </div>
+
+      <!-- Nombre -->
+      <div id="cred-nombre" style="opacity:0;transform:translateY(24px);transition:opacity .7s ease, transform .7s ease">
+        <div style="font-size:clamp(36px,8vw,56px);font-weight:900;letter-spacing:-2px;line-height:1;background:linear-gradient(135deg,var(--text),#ff9240,#ff6a00);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">
+          Josué Sánchez
+        </div>
+        <div style="font-family:var(--mono);font-size:13px;color:var(--muted);margin-top:10px;letter-spacing:2px">
+          CONVERSOR PRO · SUITE DE CÁLCULO
+        </div>
+      </div>
+
+      <!-- Línea -->
+      <div id="cred-line" style="width:0;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent);margin:28px auto;transition:width 1s ease"></div>
+
+      <!-- Tarjetas + módulos -->
+      <div id="cred-info" style="opacity:0;transform:translateY(20px);transition:opacity .6s ease, transform .6s ease">
+        <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-bottom:24px">
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px 22px;min-width:120px">
+            <div style="font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:1.5px;margin-bottom:6px">VERSIÓN</div>
+            <div style="font-size:18px;font-weight:700;color:var(--accent2)">1.0.0</div>
+          </div>
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px 22px;min-width:120px">
+            <div style="font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:1.5px;margin-bottom:6px">AÑO</div>
+            <div style="font-size:18px;font-weight:700;color:var(--accent2)">2026</div>
+          </div>
+        </div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--muted);line-height:2">
+          <span style="color:var(--accent)">■</span> Calibre &nbsp;·&nbsp;
+          <span style="color:var(--accent)">■</span> Presión &nbsp;·&nbsp;
+          <span style="color:var(--accent)">■</span> Gramaje &nbsp;·&nbsp;
+          <span style="color:var(--accent)">■</span> Encogimiento MD/TD &nbsp;·&nbsp;
+          <span style="color:var(--accent)">■</span> Munsell &nbsp;·&nbsp;
+          <span style="color:var(--accent)">■</span> AQL
+        </div>
+        <div style="margin-top:20px;font-family:var(--mono);font-size:10px;color:var(--muted);opacity:.4;letter-spacing:1px">
+          Conversor Pro · Todos los derechos reservados
+        </div>
+      </div>
+
+    </div>
+  </div>
+  <!-- CONFIGURACIÓN -->
+  <div class="section" id="sec-configuracion">
+    <div class="page-header">
+      <div class="page-eyebrow">// preferencias</div>
+      <div class="page-title">Configuración</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Ajustes de la app
+      </div>
+
+      <!-- Fila: Tema -->
+      <div class="config-row">
+        <div class="config-info">
+          <div class="config-title">
+            <span id="cfg-icon-tema">🌙</span> Tema
+          </div>
+          <div class="config-desc" id="cfg-desc-tema">Modo oscuro activo</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="cfg-tema" onchange="toggleTemaConfig()">
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="config-divider"></div>
+
+      <!-- Fila: Vibración -->
+      <div class="config-row">
+        <div class="config-info">
+          <div class="config-title">📳 Vibración al guardar</div>
+          <div class="config-desc">Feedback táctil al registrar datos</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="cfg-vibrar" onchange="guardarConfig()" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="config-divider"></div>
+
+      <!-- Fila: Modo compacto -->
+      <div class="config-row">
+        <div class="config-info">
+          <div class="config-title">📱 Modo compacto</div>
+          <div class="config-desc">Reduce tamaño de fuentes y espaciado</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="cfg-compacto" onchange="toggleCompacto()">
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="config-divider"></div>
+
+      <!-- Fila: Sonido al guardar -->
+      <div class="config-row">
+        <div class="config-info">
+          <div class="config-title">🔔 Sonido al guardar</div>
+          <div class="config-desc">Beep de confirmación al registrar datos</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="cfg-sonido" onchange="guardarConfig()" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="config-divider"></div>
+
+      <!-- Fila: Instalar app -->
+      <div class="config-row">
+        <div class="config-info">
+          <div class="config-title">📲 Instalar app</div>
+          <div class="config-desc">Agrega Conversor Pro a tu pantalla de inicio</div>
+        </div>
+        <button id="pwa-install-btn" onclick="instalarPWA()" class="btn btn-primary"
+          style="display:none;padding:8px 14px;font-size:12px;flex-shrink:0">
+          Instalar
+        </button>
+      </div>
+
+    </div>
+
+  </div>
+
+</main>
+
+<script>
+// ── LOGO MINI SIDEBAR ──
+function drawSidebarLogo() {
+  const c = document.getElementById('sidebar-logo');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  const W = 36, H = 36, cx = W/2, cy = H/2;
+
+  // Fondo hex naranja
+  const bg = ctx.createLinearGradient(0,0,W,H);
+  bg.addColorStop(0,'#ff8800'); bg.addColorStop(1,'#cc4400');
+  ctx.beginPath();
+  for (let i=0;i<6;i++){const a=(Math.PI/3)*i-Math.PI/6;i===0?ctx.moveTo(cx+16*Math.cos(a),cy+16*Math.sin(a)):ctx.lineTo(cx+16*Math.cos(a),cy+16*Math.sin(a));}
+  ctx.closePath(); ctx.fillStyle=bg; ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,.3)'; ctx.lineWidth=1; ctx.stroke();
+
+  // Letras JS
+  ctx.font='bold 13px Arial Black,sans-serif';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillStyle='#000'; ctx.fillText('JS',cx+0.5,cy+0.5);
+  ctx.fillStyle='#ffffff'; ctx.fillText('JS',cx,cy);
+
+  // Rayo diagonal
+  ctx.save(); ctx.strokeStyle='rgba(255,255,255,.7)'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(cx+6,cy-14); ctx.lineTo(cx-5,cy+14); ctx.stroke();
+  ctx.restore();
+}
+window.addEventListener('DOMContentLoaded', drawSidebarLogo);
+
+// ── CONFIGURACIÓN ──
+const CFG_KEY = 'conversor_pro_config';
+
+function cargarConfig() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(CFG_KEY) || '{}');
+
+    // Tema
+    const temaClaro = saved.tema === 'light';
+    document.getElementById('cfg-tema').checked = temaClaro;
+    if (temaClaro) {
+      document.documentElement.classList.add('light');
+      document.getElementById('cfg-icon-tema').textContent = '☀️';
+      document.getElementById('cfg-desc-tema').textContent = 'Modo claro activo';
+      // Sync switch del nav
+      const nt = document.getElementById('theme-toggle');
+      const luna = document.getElementById('icon-luna');
+      const sol  = document.getElementById('icon-sol');
+      const lbl  = document.getElementById('theme-label');
+      if (nt)   nt.checked = true;
+      if (luna) luna.style.display = 'none';
+      if (sol)  sol.style.display  = 'block';
+      if (lbl)  lbl.textContent    = 'Tema claro';
+    }
+
+    // Vibración
+    const vibrar = saved.vibrar !== false;
+    document.getElementById('cfg-vibrar').checked = vibrar;
+
+    // Compacto
+    const compacto = saved.compacto === true;
+    document.getElementById('cfg-compacto').checked = compacto;
+    if (compacto) document.body.classList.add('compacto');
+
+    // Sonido
+    const sonido = saved.sonido !== false;
+    const cfgS = document.getElementById('cfg-sonido');
+    if (cfgS) cfgS.checked = sonido;
+
+  } catch(e) {}
+}
+
+function guardarConfig() {
+  const cfg = {
+    tema:     document.getElementById('cfg-tema').checked    ? 'light' : 'dark',
+    vibrar:   document.getElementById('cfg-vibrar').checked,
+    compacto: document.getElementById('cfg-compacto').checked,
+    sonido:   document.getElementById('cfg-sonido')?.checked ?? true,
+  };
+  localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
+}
+
+function toggleTemaConfig() {
+  const isLight = document.getElementById('cfg-tema').checked;
+  const root  = document.documentElement;
+  const luna  = document.getElementById('icon-luna');
+  const sol   = document.getElementById('icon-sol');
+  const label = document.getElementById('theme-label');
+  const nt    = document.getElementById('theme-toggle');
+
+  if (isLight) {
+    root.classList.add('light');
+    document.getElementById('cfg-icon-tema').textContent = '☀️';
+    document.getElementById('cfg-desc-tema').textContent = 'Modo claro activo';
+    if (luna)  luna.style.display  = 'none';
+    if (sol)   sol.style.display   = 'block';
+    if (label) label.textContent   = 'Tema claro';
+    if (nt)    nt.checked          = true;
+  } else {
+    root.classList.remove('light');
+    document.getElementById('cfg-icon-tema').textContent = '🌙';
+    document.getElementById('cfg-desc-tema').textContent = 'Modo oscuro activo';
+    if (luna)  luna.style.display  = 'block';
+    if (sol)   sol.style.display   = 'none';
+    if (label) label.textContent   = 'Tema oscuro';
+    if (nt)    nt.checked          = false;
+  }
+  guardarConfig();
+}
+
+function toggleCompacto() {
+  const on = document.getElementById('cfg-compacto').checked;
+  document.body.classList.toggle('compacto', on);
+  guardarConfig();
+  toast(on ? '📱 Modo compacto activado' : '📱 Modo compacto desactivado');
+}
+
+// ── VIBRACIÓN ──
+function vibrarAlGuardar() {
+  try {
+    const cfg = JSON.parse(localStorage.getItem(CFG_KEY) || '{}');
+    if (cfg.vibrar !== false && navigator.vibrate) navigator.vibrate(80);
+  } catch(e) {}
+}
+
+// ── SONIDO ──
+function sonidoAlGuardar() {
+  try {
+    const cfg = JSON.parse(localStorage.getItem(CFG_KEY) || '{}');
+    if (cfg.sonido === false) return;
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    // Beep doble agradable: nota + nota más alta
+    const notas = [880, 1100];
+    notas.forEach((freq, i) => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      const t = ctx.currentTime + i * 0.12;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.18, t + 0.01);
+      gain.gain.linearRampToValueAtTime(0, t + 0.1);
+      osc.start(t);
+      osc.stop(t + 0.12);
+    });
+  } catch(e) {}
+}
+
+function feedbackAlGuardar() {
+  vibrarAlGuardar();
+  sonidoAlGuardar();
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  cargarConfig();
+  initPWA();
+});
+
+// ── PWA ──
+let deferredPrompt = null;
+
+function initPWA() {
+  // Generar ícono JS hexagonal como PNG base64
+  const ic = document.createElement('canvas');
+  ic.width = 512; ic.height = 512;
+  const ctx = ic.getContext('2d');
+  // Fondo
+  ctx.fillStyle = '#0a0a0a';
+  ctx.fillRect(0, 0, 512, 512);
+  // Hexágono
+  ctx.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const a = (Math.PI/3)*i - Math.PI/6;
+    const x = 256 + 230*Math.cos(a), y = 256 + 230*Math.sin(a);
+    i === 0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+  }
+  ctx.closePath();
+  const g = ctx.createLinearGradient(0,0,512,512);
+  g.addColorStop(0,'#ff8800'); g.addColorStop(1,'#cc4400');
+  ctx.fillStyle = g; ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,.2)'; ctx.lineWidth = 8; ctx.stroke();
+  // JS
+  ctx.font = 'bold 200px Arial Black,sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = 'rgba(0,0,0,.4)'; ctx.fillText('JS', 260, 264);
+  ctx.fillStyle = '#ffffff'; ctx.fillText('JS', 256, 260);
+  // Rayo
+  ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.lineWidth = 12; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(310,60); ctx.lineTo(200,452); ctx.stroke();
+  const icon = ic.toDataURL('image/png');
+
+  // Manifest dinámico
+  const manifest = {
+    name: 'Conversor Pro',
+    short_name: 'ConversorPro',
+    description: 'Suite de cálculo industrial — Calibre, Presión, Gramaje, Encogimiento, AQL',
+    start_url: '.',
+    display: 'standalone',
+    background_color: '#000000',
+    theme_color: '#ff6a00',
+    orientation: 'any',
+    icons: [
+      { src: icon, sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+      { src: icon, sizes: '192x192', type: 'image/png' }
+    ]
+  };
+  const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  document.getElementById('pwa-manifest').href = url;
+
+  // Apple touch icon
+  const link = document.createElement('link');
+  link.rel = 'apple-touch-icon'; link.href = icon;
+  document.head.appendChild(link);
+
+  // Service Worker inline
+  const swCode = `
+    const CACHE = 'conversor-pro-v1';
+    self.addEventListener('install', e => {
+      e.waitUntil(caches.open(CACHE).then(c => c.addAll(['.'])));
+      self.skipWaiting();
+    });
+    self.addEventListener('activate', e => {
+      e.waitUntil(caches.keys().then(keys =>
+        Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
+      ));
+      self.clients.claim();
+    });
+    self.addEventListener('fetch', e => {
+      e.respondWith(
+        fetch(e.request).catch(() => caches.match(e.request))
+      );
+    });
+  `;
+  const swBlob = new Blob([swCode], { type: 'application/javascript' });
+  const swUrl  = URL.createObjectURL(swBlob);
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register(swUrl).catch(() => {});
+  }
+
+  // Capturar evento de instalación
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferredPrompt = e;
+    // Mostrar botón en configuración
+    const btn = document.getElementById('pwa-install-btn');
+    if (btn) btn.style.display = 'flex';
+  });
+
+  window.addEventListener('appinstalled', () => {
+    deferredPrompt = null;
+    const btn = document.getElementById('pwa-install-btn');
+    if (btn) btn.style.display = 'none';
+    toast('✓ App instalada en tu dispositivo');
+  });
+}
+
+async function instalarPWA() {
+  if (!deferredPrompt) {
+    toast('Abre el menú del navegador → "Instalar app" o "Agregar a inicio"');
+    return;
+  }
+  deferredPrompt.prompt();
+  const { outcome } = await deferredPrompt.userChoice;
+  if (outcome === 'accepted') toast('✓ Instalando Conversor Pro...');
+  deferredPrompt = null;
+}
+
+// ── TEMA CLARO / OSCURO ──
+function toggleTema() {
+  const isLight = document.getElementById('theme-toggle').checked;
+  const cfgTema = document.getElementById('cfg-tema');
+  if (cfgTema) cfgTema.checked = isLight;
+  toggleTemaConfig();
+}
+
+// ── SIDEBAR TOGGLE ──
+const sidebar = document.getElementById('sidebar');
+const toggleBtn = document.getElementById('toggle-btn');
+let sidebarOpen = false;
+let autoCloseTimer = null;
+
+function toggleSidebar() {
+  sidebarOpen ? cerrarSidebar() : abrirSidebar();
+}
+
+function abrirSidebar() {
+  sidebarOpen = true;
+  sidebar.classList.add('open');
+  toggleBtn.style.display = 'block';
+  toggleBtn.style.transform = 'rotate(0deg)';
+  resetAutoClose();
+}
+
+function cerrarSidebar() {
+  sidebarOpen = false;
+  sidebar.classList.remove('open');
+  toggleBtn.style.display = 'none';
+  clearTimeout(autoCloseTimer);
+}
+
+
+function resetAutoClose() {
+  clearTimeout(autoCloseTimer);
+  autoCloseTimer = setTimeout(cerrarSidebar, 4000);
+}
+
+// Abrir al hacer hover en el sidebar
+sidebar.addEventListener('mouseenter', abrirSidebar);
+sidebar.addEventListener('mouseleave', () => {
+  autoCloseTimer = setTimeout(cerrarSidebar, 600);
+});
+sidebar.addEventListener('mousemove', resetAutoClose);
+
+function animarCreditos() {
+  // Reset
+  const els = ['cred-logo-wrap','cred-eye','cred-nombre','cred-info'];
+  els.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.transition = 'none';
+    el.style.opacity = '0';
+    el.style.transform = id === 'cred-logo-wrap' ? 'scale(.6)' : 'translateY(24px)';
+  });
+  const line = document.getElementById('cred-line');
+  if (line) { line.style.transition = 'none'; line.style.width = '0'; }
+
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    setTimeout(() => {
+      const lw = document.getElementById('cred-logo-wrap');
+      if (lw) { lw.style.transition='opacity .8s ease, transform .8s cubic-bezier(.34,1.56,.64,1)'; lw.style.opacity='1'; lw.style.transform='scale(1)'; }
+    }, 80);
+    setTimeout(() => {
+      const e = document.getElementById('cred-eye');
+      if (e) { e.style.transition='opacity .6s ease, transform .6s ease'; e.style.opacity='1'; e.style.transform='translateY(0)'; }
+    }, 500);
+    setTimeout(() => {
+      const n = document.getElementById('cred-nombre');
+      if (n) { n.style.transition='opacity .7s ease, transform .7s ease'; n.style.opacity='1'; n.style.transform='translateY(0)'; }
+    }, 750);
+    setTimeout(() => {
+      if (line) { line.style.transition='width 1s ease'; line.style.width='200px'; }
+    }, 1050);
+    setTimeout(() => {
+      const i = document.getElementById('cred-info');
+      if (i) { i.style.transition='opacity .6s ease, transform .6s ease'; i.style.opacity='1'; i.style.transform='translateY(0)'; }
+    }, 1300);
+  }));
+}
+
+// ── NAVEGACIÓN ──
+function showSection(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('sec-' + id).classList.add('active');
+  event.currentTarget.classList.add('active');
+  // auto-cerrar sidebar tras 800ms de seleccionar
+  clearTimeout(autoCloseTimer);
+  autoCloseTimer = setTimeout(cerrarSidebar, 800);
+}
+
+// ── CALIBRE ──
+let calSwapped = false;
+function convertCalibre(from) {
+  const a = document.getElementById('cal-a');
+  const b = document.getElementById('cal-b');
+  const res = document.getElementById('cal-res-val');
+  const unit = document.getElementById('cal-res-unit');
+  if (!calSwapped) {
+    if (from === 'a') {
+      const v = parseFloat(a.value);
+      if (isNaN(v)) { b.value=''; res.textContent='—'; unit.textContent=''; return; }
+      const r = round(v * 25.4);
+      b.value = r; res.textContent = r; unit.textContent = 'μm';
+    } else {
+      const v = parseFloat(b.value);
+      if (isNaN(v)) { a.value=''; res.textContent='—'; unit.textContent=''; return; }
+      const r = round(v / 25.4);
+      a.value = r; res.textContent = r; unit.textContent = 'mil';
+    }
+  } else {
+    if (from === 'a') {
+      const v = parseFloat(a.value);
+      if (isNaN(v)) { b.value=''; res.textContent='—'; return; }
+      const r = round(v / 25.4);
+      b.value = r; res.textContent = r; unit.textContent = 'mil';
+    } else {
+      const v = parseFloat(b.value);
+      if (isNaN(v)) { a.value=''; res.textContent='—'; return; }
+      const r = round(v * 25.4);
+      a.value = r; res.textContent = r; unit.textContent = 'μm';
+    }
+  }
+}
+function swapCalibre() {
+  calSwapped = !calSwapped;
+  const la = document.getElementById('lbl-cal-a');
+  const lb = document.getElementById('lbl-cal-b');
+  if (calSwapped) {
+    la.textContent = 'Micras (μm)';
+    lb.textContent = 'Milésimas (thou / mil)';
+  } else {
+    la.textContent = 'Milésimas (thou / mil)';
+    lb.textContent = 'Micras (μm)';
+  }
+  document.getElementById('cal-a').value = '';
+  document.getElementById('cal-b').value = '';
+  document.getElementById('cal-res-val').textContent = '—';
+  document.getElementById('cal-res-unit').textContent = '';
+}
+
+// ── PRESIÓN ──
+let preSwapped = false;
+function convertPresion(from) {
+  const a = document.getElementById('pre-a');
+  const b = document.getElementById('pre-b');
+  const res = document.getElementById('pre-res-val');
+  const unit = document.getElementById('pre-res-unit');
+  if (!preSwapped) {
+    if (from === 'a') {
+      const v = parseFloat(a.value);
+      if (isNaN(v)) { b.value=''; res.textContent='—'; return; }
+      const r = round(v * 0.14503773773);
+      b.value = r; res.textContent = r; unit.textContent = 'PSI';
+    } else {
+      const v = parseFloat(b.value);
+      if (isNaN(v)) { a.value=''; res.textContent='—'; return; }
+      const r = round(v / 0.14503773773);
+      a.value = r; res.textContent = r; unit.textContent = 'kPa';
+    }
+  } else {
+    if (from === 'a') {
+      const v = parseFloat(a.value);
+      if (isNaN(v)) { b.value=''; res.textContent='—'; return; }
+      const r = round(v / 0.14503773773);
+      b.value = r; res.textContent = r; unit.textContent = 'kPa';
+    } else {
+      const v = parseFloat(b.value);
+      if (isNaN(v)) { a.value=''; res.textContent='—'; return; }
+      const r = round(v * 0.14503773773);
+      a.value = r; res.textContent = r; unit.textContent = 'PSI';
+    }
+  }
+}
+function swapPresion() {
+  preSwapped = !preSwapped;
+  const la = document.getElementById('lbl-pre-a');
+  const lb = document.getElementById('lbl-pre-b');
+  if (preSwapped) {
+    la.textContent = 'PSI (lb/in²)';
+    lb.textContent = 'Kilopascales (kPa)';
+  } else {
+    la.textContent = 'Kilopascales (kPa)';
+    lb.textContent = 'PSI (lb/in²)';
+  }
+  document.getElementById('pre-a').value = '';
+  document.getElementById('pre-b').value = '';
+  document.getElementById('pre-res-val').textContent = '—';
+  document.getElementById('pre-res-unit').textContent = '';
+}
+
+// ── GRAMAJE ──
+function setMuestra(w, h) {
+  document.getElementById('g-ancho').value = w;
+  document.getElementById('g-largo').value = h;
+}
+function calcGramaje() {
+  const peso = parseFloat(document.getElementById('g-peso').value);
+  const ancho = parseFloat(document.getElementById('g-ancho').value);
+  const largo = parseFloat(document.getElementById('g-largo').value);
+  const n = parseInt(document.getElementById('g-n').value) || 1;
+  if (isNaN(peso) || isNaN(ancho) || isNaN(largo)) {
+    alert('Ingresa peso, ancho y largo.');
+    return;
+  }
+  const areaCm2 = ancho * largo;
+  const areaM2 = areaCm2 / 10000;
+  const pesoProm = peso / n;
+  const gsm = (pesoProm / (ancho * largo)) * 1000000;
+  const ozyd = gsm * 0.02949;
+
+  document.getElementById('g-area').textContent = `${ancho} × ${largo} = ${round(ancho * largo, 4)} cm²`;
+  document.getElementById('g-prom').textContent = `${round(pesoProm, 4)} g`;
+  document.getElementById('g-gsm').textContent = `${round(gsm, 2)} g/m²`;
+  document.getElementById('g-formula').textContent = `${round(pesoProm,4)} ÷ (${ancho} × ${largo}) × 1,000,000 = ${round(gsm,2)}`;
+  document.getElementById('gram-result').style.display = 'block';
+  document.getElementById('btn-guardar-gramaje').style.display = 'inline-flex';
+  document.getElementById('notas-gramaje-wrap').style.display = 'block';
+  window._lastGramaje = { peso_g: peso, ancho_cm: ancho, largo_cm: largo, muestras: n, gsm: round(gsm,2), oz_yd: round(gsm * 0.02949, 4) };
+}
+
+// ── UTILS ──
+function round(v, d = 4) { return Math.round(v * Math.pow(10, d)) / Math.pow(10, d); }
+
+
+// ── CALIBRE ──
+let calibreData = [];
+
+function calcCalibre() {
+  const cal = parseFloat(document.getElementById('cv-calibre').value);
+  const n   = parseInt(document.getElementById('cv-n').value) || 1;
+  const live = document.getElementById('cv-live');
+
+  if (isNaN(cal) || cal <= 0) { live.style.display = 'none'; return; }
+
+  const milPorCav = round(cal / n, 4);
+  const umPorCav  = round(milPorCav * 25.4, 2);
+
+  document.getElementById('cv-mil-res').textContent = milPorCav;
+  document.getElementById('cv-um-res').textContent  = umPorCav;
+  document.getElementById('cv-formula-txt').textContent =
+    ` ${cal} mil ÷ ${n} = ${milPorCav} mil  →  × 25.4 = ${umPorCav} μm`;
+  live.style.display = 'block';
+}
+
+function limpiarCalibre() {
+  document.getElementById('cv-calibre').value = '';
+  document.getElementById('cv-n').value = 1;
+  document.getElementById('cv-live').style.display = 'none';
+}
+
+function addCalibresRow() {
+  const cal = parseFloat(document.getElementById('cv-calibre').value);
+  const n   = parseInt(document.getElementById('cv-n').value) || 1;
+  if (isNaN(cal) || cal <= 0) { alert('Ingresa un calibre válido.'); return; }
+
+  const milPorCav = round(cal / n, 4);
+  const umPorCav  = round(milPorCav * 25.4, 2);
+  calibreData.push({ cal, n, milPorCav, umPorCav });
+  renderCalibre();
+  guardarCalibreDB({ cal, n, milPorCav, umPorCav });
+  limpiarCalibre();
+}
+
+function renderCalibre() {
+  const tbody = document.getElementById('cv-tbody');
+  const count = calibreData.length;
+  document.getElementById('cv-count').textContent = count + ' medición' + (count !== 1 ? 'es' : '');
+
+  if (count === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--muted);font-size:13px">Sin mediciones aún</td></tr>';
+    document.getElementById('cv-avg-box').style.display = 'none';
+    return;
+  }
+
+  tbody.innerHTML = calibreData.map((r, i) => `
+    <tr>
+      <td style="color:var(--muted)">${i + 1}</td>
+      <td>${r.cal}</td>
+      <td>${r.n}</td>
+      <td style="color:var(--gold)">${r.milPorCav}</td>
+      <td class="val" style="color:var(--accent2)">${r.umPorCav} μm</td>
+      <td><button onclick="deleteCalibre(${i})" style="background:none;border:none;color:#f87171;cursor:pointer;font-size:16px;padding:2px 6px">✕</button></td>
+    </tr>`
+  ).join('');
+
+  const avgMil = round(calibreData.reduce((s,r) => s + r.milPorCav, 0) / count, 4);
+  const avgUm  = round(calibreData.reduce((s,r) => s + r.umPorCav,  0) / count, 2);
+  document.getElementById('cv-avg-mil').textContent = avgMil + ' mil';
+  document.getElementById('cv-avg-um').textContent  = avgUm  + ' μm';
+  document.getElementById('cv-avg-n').textContent   = count;
+  document.getElementById('cv-avg-box').style.display = 'flex';
+}
+
+function deleteCalibre(i) {
+  calibreData.splice(i, 1);
+  renderCalibre();
+}
+
+function clearCalibre() {
+  calibreData = [];
+  renderCalibre();
+}
+
+function copyCalibre() {
+  if (!calibreData.length) return;
+  const header = '#\tCalibre total (mil)\tMuestras\tmil/cavidad\tμm/cavidad';
+  const rows = calibreData.map((r, i) =>
+    `${i+1}\t${r.cal}\t${r.n}\t${r.milPorCav}\t${r.umPorCav}`
+  ).join('\n');
+  navigator.clipboard.writeText(header + '\n' + rows).then(() => {
+    const tip = document.createElement('div');
+    tip.textContent = '✓ Tabla copiada';
+    tip.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#ff6a00;color:#000;padding:8px 18px;border-radius:8px;font-family:var(--mono);font-size:13px;z-index:999;font-weight:700';
+    document.body.appendChild(tip);
+    setTimeout(() => tip.remove(), 1800);
+  });
+}
+
+
+// ── SUPABASE ──
+const SUPABASE_URL = 'https://fsclzbtipiigfmylwbwr.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZzY2x6YnRpcGlpZ2ZteWx3YndyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI3NDkxNTgsImV4cCI6MjA5ODMyNTE1OH0.G0det-mnFSn7A15yDuI8KbEWdEv0sPqF_0BTsDkzDek';
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ── INDICADOR BD ──
+let bdOnline = false;
+async function checkBD() {
+  const dot   = document.getElementById('bd-dot');
+  const label = document.getElementById('bd-label');
+  const setState = (cls, txt) => {
+    if (dot)   { dot.className = 'bd-dot ' + cls; label.textContent = txt; }
+  };
+  try {
+    setState('pending', 'Conectando...');
+    const { error } = await db.from('presion_log').select('id').limit(1);
+    if (error) throw error;
+    bdOnline = true;
+    setState('online', 'BD conectada');
+    sincronizarOffline();
+  } catch {
+    bdOnline = false;
+    setState('offline', 'Sin conexión');
+  }
+}
+setInterval(checkBD, 30000);
+window.addEventListener('load', checkBD);
+
+// ── OFFLINE QUEUE ──
+const QUEUE_KEY = 'conversor_pro_queue';
+function getQueue() { try { return JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]'); } catch { return []; } }
+function saveQueue(q) { localStorage.setItem(QUEUE_KEY, JSON.stringify(q)); }
+function enqueue(tabla, data) {
+  const q = getQueue();
+  q.push({ tabla, data, ts: new Date().toISOString() });
+  saveQueue(q);
+  updateOfflineBadge();
+  toast('📦 Guardado offline — se sincronizará al conectar', true);
+}
+function updateOfflineBadge() {
+  const q = getQueue();
+  const badge = document.getElementById('offline-badge');
+  document.getElementById('offline-count').textContent = q.length;
+  badge.classList.toggle('visible', q.length > 0);
+}
+async function sincronizarOffline() {
+  if (!bdOnline) return;
+  const q = getQueue();
+  if (!q.length) return;
+  let ok = 0;
+  const restante = [];
+  for (const item of q) {
+    const { error } = await db.from(item.tabla).insert([item.data]);
+    if (!error) ok++;
+    else restante.push(item);
+  }
+  saveQueue(restante);
+  updateOfflineBadge();
+  if (ok) toast(`✓ ${ok} registro${ok>1?'s':''} sincronizado${ok>1?'s':''}`);
+}
+window.addEventListener('online', () => { checkBD(); });
+
+function toast(msg, ok = true) {
+  const tip = document.createElement('div');
+  tip.textContent = msg;
+  tip.style.cssText = `position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+    background:${ok ? '#ff6a00' : '#cc2200'};color:#000;padding:10px 22px;
+    border-radius:8px;font-family:var(--mono);font-size:13px;z-index:9999;
+    font-weight:700;box-shadow:0 4px 20px rgba(255,106,0,.4);white-space:nowrap`;
+  document.body.appendChild(tip);
+  setTimeout(() => tip.remove(), 2500);
+}
+
+function notas(id) { return (document.getElementById(id)?.value?.trim() || null); }
+
+async function guardarPresion() {
+  const a = parseFloat(document.getElementById('pre-a').value);
+  const b = parseFloat(document.getElementById('pre-b').value);
+  if (isNaN(a) || isNaN(b)) { toast('Realiza una conversión primero', false); return; }
+  const ua = preSwapped ? 'PSI' : 'kPa';
+  const ub = preSwapped ? 'kPa' : 'PSI';
+  const data = { valor_a: a, unidad_a: ua, valor_b: b, unidad_b: ub, notas: notas('pre-notas') };
+  if (!bdOnline) { enqueue('presion_log', data); return; }
+  const { error } = await db.from('presion_log').insert([data]);
+  if (error) { toast('❌ ' + error.message, false); } else { feedbackAlGuardar(); toast('✓ Presión guardada'); }
+}
+
+async function guardarGramaje() {
+  if (!window._lastGramaje) { toast('Calcula el gramaje primero', false); return; }
+  const data = { ...window._lastGramaje, notas: notas('gram-notas') };
+  if (!bdOnline) { enqueue('gramaje_log', data); return; }
+  const { error } = await db.from('gramaje_log').insert([data]);
+  if (error) { toast('❌ ' + error.message, false); } else { feedbackAlGuardar(); toast('✓ Gramaje guardado'); }
+}
+
+async function guardarCalibreDB(row) {
+  const data = { calibre_total: row.cal, num_muestras: row.n, mil_por_cavidad: row.milPorCav, um_por_cavidad: row.umPorCav, notas: notas('cv-notas') };
+  if (!bdOnline) { enqueue('calibre_log', data); return; }
+  const { error } = await db.from('calibre_log').insert([data]);
+  if (error) { toast('❌ ' + error.message, false); } else { feedbackAlGuardar(); toast('✓ Calibre guardado'); }
+}
+
+async function guardarEncogimiento(row) {
+  const data = { final_md: row.md, pct_md: row.pctMD, final_td: row.td, pct_td: row.pctTD, notas: notas('enc-notas') };
+  if (!bdOnline) { enqueue('encogimiento_log', data); return; }
+  const { error } = await db.from('encogimiento_log').insert([data]);
+  if (error) { toast('❌ ' + error.message, false); } else { feedbackAlGuardar(); toast('✓ Encogimiento guardado'); }
+}
+
+// ── EXPORTAR PDF ──
+async function exportarPDF() {
+  await generarPDF([{ cfg: tabConfig[tabActual], data: historialData }],
+    `conversor_pro_${tabActual}_${new Date().toISOString().slice(0,10)}.pdf`);
+}
+
+async function exportarTodoPDF() {
+  toast('⏳ Generando PDF completo...');
+  const desde = document.getElementById('h-desde').value;
+  const hasta  = document.getElementById('h-hasta').value;
+  const secciones = [];
+  for (const key of tabKeys) {
+    const cfg = tabConfig[key];
+    let q = db.from(cfg.tabla).select('*').order('created_at', { ascending: false }).limit(500);
+    if (desde) q = q.gte('created_at', desde + 'T00:00:00');
+    if (hasta)  q = q.lte('created_at', hasta  + 'T23:59:59');
+    const { data } = await q;
+    secciones.push({ cfg, data: data || [] });
+  }
+  await generarPDF(secciones, `conversor_pro_COMPLETO_${new Date().toISOString().slice(0,10)}.pdf`);
+}
+
+async function generarPDF(secciones, filename) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  const W = 297, naranja = [255,106,0], negro = [10,10,10];
+  const desde = document.getElementById('h-desde').value;
+  const hasta  = document.getElementById('h-hasta').value;
+
+  const dibujarMembrete = () => {
+    doc.setFillColor(...negro);
+    doc.rect(0, 0, W, 36, 'F');
+    const logoC = document.getElementById('sidebar-logo');
+    if (logoC) doc.addImage(logoC.toDataURL('image/png'), 'PNG', 10, 7, 20, 20);
+    doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(16);
+    doc.text('CONVERSOR PRO', 36, 15);
+    doc.setFontSize(8); doc.setTextColor(...naranja);
+    doc.text('Desarrollado por Josué Sánchez · Suite de Cálculo Industrial', 36, 22);
+    doc.setTextColor(120,120,120); doc.setFontSize(7);
+    doc.text(`Generado: ${new Date().toLocaleString('es-MX')}  |  Período: ${desde||'—'} → ${hasta||'—'}`, 36, 28);
+    doc.setDrawColor(...naranja); doc.setLineWidth(0.7);
+    doc.line(0, 36, W, 36);
+  };
+
+  const dibujarPie = () => {
+    const pH = doc.internal.pageSize.height;
+    doc.setDrawColor(...naranja); doc.setLineWidth(0.3);
+    doc.line(0, pH-12, W, pH-12);
+    doc.setFontSize(6); doc.setTextColor(150,150,150);
+    doc.text('Conversor Pro · Todos los derechos reservados · Josué Sánchez 2026', W/2, pH-6, { align:'center' });
+  };
+
+  let primeraPagina = true;
+  for (const { cfg, data } of secciones) {
+    if (!primeraPagina) doc.addPage();
+    primeraPagina = false;
+    dibujarMembrete();
+
+    doc.setTextColor(...negro); doc.setFont('helvetica','bold'); doc.setFontSize(12);
+    doc.text(cfg.titulo.replace(/[^\w\s·↔↕%]/g,'').trim(), 10, 46);
+    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(100,100,100);
+    doc.text(`${data.length} registro${data.length!==1?'s':''}`, 10, 52);
+
+    if (!data.length) {
+      doc.setTextColor(150,150,150); doc.setFontSize(9);
+      doc.text('Sin registros en este rango.', 10, 64);
+    } else {
+      const rows = data.map(row => cfg.keys.map(k => {
+        if (k === 'created_at') return new Date(row[k]).toLocaleString('es-MX');
+        return (row[k] === null || row[k] === undefined) ? '' : String(row[k]);
+      }));
+      doc.autoTable({
+        head: [cfg.cols],
+        body: rows,
+        startY: 56,
+        styles: { font:'helvetica', fontSize:7.5, cellPadding:2 },
+        headStyles: { fillColor: naranja, textColor:[0,0,0], fontStyle:'bold' },
+        alternateRowStyles: { fillColor:[248,248,248] },
+        tableLineColor:[220,220,220], tableLineWidth:0.1,
+        columnStyles: { [cfg.cols.length-1]: { cellWidth: 35, textColor:[120,120,120] } }
+      });
+    }
+    dibujarPie();
+  }
+
+  doc.save(filename);
+  toast('📄 PDF descargado');
+}
+
+async function exportarTodoCSV() {
+  toast('⏳ Generando CSV completo...');
+  const desde = document.getElementById('h-desde').value;
+  const hasta  = document.getElementById('h-hasta').value;
+  let csv = '';
+  for (const key of tabKeys) {
+    const cfg = tabConfig[key];
+    let q = db.from(cfg.tabla).select('*').order('created_at', { ascending: false }).limit(500);
+    if (desde) q = q.gte('created_at', desde + 'T00:00:00');
+    if (hasta)  q = q.lte('created_at', hasta  + 'T23:59:59');
+    const { data } = await q;
+    if (!data?.length) continue;
+    csv += `\n## ${cfg.titulo.replace(/[^\w\s·↔↕%]/g,'').trim()} (${data.length} registros)\n`;
+    csv += cfg.cols.join(',') + '\n';
+    csv += data.map(row => cfg.keys.map(k => {
+      const v = k === 'created_at' ? new Date(row[k]).toLocaleString('es-MX') : (row[k] ?? '');
+      return `"${v}"`;
+    }).join(',')).join('\n');
+    csv += '\n';
+  }
+  const blob = new Blob([`CONVERSOR PRO - Exportación completa\n${new Date().toLocaleString('es-MX')}\n${csv}`],
+    { type:'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `conversor_pro_COMPLETO_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('📥 CSV completo descargado');
+}
+
+// ── HISTORIAL ──
+let tabActual = 'presion';
+let historialData = [];
+
+const tabConfig = {
+  presion: {
+    tabla: 'presion_log',
+    titulo: '🕛 Presión',
+    cols: ['ID','Fecha','Valor A','Unidad A','Valor B','Unidad B','Notas'],
+    keys: ['id','created_at','valor_a','unidad_a','valor_b','unidad_b','notas']
+  },
+  gramaje: {
+    tabla: 'gramaje_log',
+    titulo: '⚖️ Gramaje',
+    cols: ['ID','Fecha','Peso (g)','Ancho (cm)','Largo (cm)','Muestras','g/m²','oz/yd²','Notas'],
+    keys: ['id','created_at','peso_g','ancho_cm','largo_cm','muestras','gsm','oz_yd','notas']
+  },
+  calibre: {
+    tabla: 'calibre_log',
+    titulo: '🔩 Calibre',
+    cols: ['ID','Fecha','Calibre total (mil)','Láminas','mil/cavidad','μm/cavidad','Notas'],
+    keys: ['id','created_at','calibre_total','num_muestras','mil_por_cavidad','um_por_cavidad','notas']
+  },
+  encogimiento: {
+    tabla: 'encogimiento_log',
+    titulo: '📐 Encogimiento',
+    cols: ['ID','Fecha','Final MD (mm)','% MD','Final TD (mm)','% TD','Notas'],
+    keys: ['id','created_at','final_md','pct_md','final_td','pct_td','notas']
+  }
+};
+
+const tabKeys = ['presion','gramaje','calibre','encogimiento'];
+
+function switchTab(tab) {
+  tabActual = tab;
+  document.querySelectorAll('.h-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.h-tab')[tabKeys.indexOf(tab)].classList.add('active');
+  cargarHistorial();
+}
+
+// ── BÚSQUEDA EN HISTORIAL ──
+let historialFiltrado = [];
+
+function filtrarHistorial() {
+  const q = document.getElementById('h-buscar').value.trim().toLowerCase();
+  const badge  = document.getElementById('h-filter-badge');
+  const btnX   = document.getElementById('h-clear-search');
+  const txt    = document.getElementById('h-filter-txt');
+
+  if (!q) {
+    historialFiltrado = [...historialData];
+    badge.style.display = 'none';
+    if (btnX) btnX.style.display = 'none';
+  } else {
+    historialFiltrado = historialData.filter(row => {
+      const notas = (row.notas || '').toLowerCase();
+      return notas.includes(q);
+    });
+    badge.style.display = 'flex';
+    if (btnX) btnX.style.display = 'block';
+    txt.textContent = `Filtrando por: "${q}" · ${historialFiltrado.length} resultado${historialFiltrado.length !== 1 ? 's' : ''}`;
+  }
+  renderTablaHistorial(historialFiltrado);
+}
+
+function limpiarBusqueda() {
+  document.getElementById('h-buscar').value = '';
+  filtrarHistorial();
+}
+
+function renderTablaHistorial(data) {
+  const cfg = tabConfig[tabActual];
+  document.getElementById('h-count').textContent = data.length + ' registros';
+  document.getElementById('h-thead').innerHTML =
+    '<tr>' + cfg.cols.map(c => `<th>${c}</th>`).join('') + '<th></th></tr>';
+
+  if (!data.length) {
+    document.getElementById('h-tbody').innerHTML =
+      `<tr><td colspan="${cfg.cols.length + 1}" style="text-align:center;padding:30px;color:var(--muted);font-size:13px">Sin resultados</td></tr>`;
+    return;
+  }
+
+  document.getElementById('h-tbody').innerHTML = data.map(row => {
+    const cells = cfg.keys.map(k => {
+      if (k === 'created_at') {
+        const d = new Date(row[k]);
+        return `<td style="color:var(--muted);font-size:12px">${d.toLocaleDateString('es-MX')} ${d.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'})}</td>`;
+      }
+      if (k === 'id') return `<td style="color:var(--muted);font-size:11px">#${row[k]}</td>`;
+      if (k === 'notas') {
+        const q = document.getElementById('h-buscar').value.trim().toLowerCase();
+        const val = row[k] ?? '';
+        const highlighted = q && val.toLowerCase().includes(q)
+          ? val.replace(new RegExp(`(${q})`, 'gi'), '<mark style="background:rgba(255,106,0,.35);color:var(--text);border-radius:2px;padding:0 2px">$1</mark>')
+          : val;
+        return `<td style="color:var(--muted);font-size:12px">${highlighted || '—'}</td>`;
+      }
+      const isNum = typeof row[k] === 'number';
+      return `<td ${isNum ? 'class="val" style="color:var(--accent2)"' : ''}>${row[k] ?? '—'}</td>`;
+    }).join('');
+    return `<tr>${cells}<td><button onclick="eliminarRegistro('${tabActual}',${row.id})" style="background:none;border:none;color:#f87171;cursor:pointer;font-size:14px;padding:2px 6px" title="Eliminar">✕</button></td></tr>`;
+  }).join('');
+}
+
+
+async function cargarHistorial() {
+  const cfg = tabConfig[tabActual];
+  document.getElementById('h-table-title').textContent = cfg.titulo;
+  document.getElementById('h-loading').style.display = 'block';
+  document.getElementById('h-tbody').innerHTML = '';
+
+  const desde = document.getElementById('h-desde').value;
+  const hasta  = document.getElementById('h-hasta').value;
+
+  let query = db.from(cfg.tabla).select('*').order('created_at', { ascending: false }).limit(200);
+  if (desde) query = query.gte('created_at', desde + 'T00:00:00');
+  if (hasta)  query = query.lte('created_at', hasta  + 'T23:59:59');
+
+  const { data, error } = await query;
+  document.getElementById('h-loading').style.display = 'none';
+
+  if (error) { toast('❌ Error: ' + error.message, false); return; }
+
+  historialData = data || [];
+  historialFiltrado = [...historialData];
+
+  // Re-aplicar filtro si hay búsqueda activa
+  const q = document.getElementById('h-buscar')?.value.trim().toLowerCase();
+  if (q) {
+    filtrarHistorial();
+  } else {
+    renderTablaHistorial(historialData);
+  }
+}
+
+async function eliminarRegistro(tab, id) {
+  if (!confirm(`¿Eliminar registro #${id}?`)) return;
+  const { error } = await db.from(tabConfig[tab].tabla).delete().eq('id', id);
+  if (error) { toast('❌ Error: ' + error.message, false); return; }
+  toast('🗑 Registro eliminado');
+  cargarHistorial();
+}
+
+function exportarCSV() {
+  if (!historialData.length) { toast('Sin datos para exportar', false); return; }
+  const cfg = tabConfig[tabActual];
+  const header = cfg.cols.join(',');
+  const rows = historialData.map(row =>
+    cfg.keys.map(k => {
+      const v = k === 'created_at' ? new Date(row[k]).toLocaleString('es-MX') : (row[k] ?? '');
+      return `"${v}"`;
+    }).join(',')
+  ).join('\n');
+  const blob = new Blob([header + '\n' + rows], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `lab_${tabActual}_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+  toast('📥 CSV descargado');
+}
+
+// Poner fechas por defecto (último mes)
+window.addEventListener('load', () => {
+  const hoy = new Date();
+  const hace30 = new Date(); hace30.setDate(hoy.getDate() - 30);
+  document.getElementById('h-hasta').value = hoy.toISOString().slice(0,10);
+  document.getElementById('h-desde').value = hace30.toISOString().slice(0,10);
+  updateOfflineBadge();
+});
+
+// ── LOGO JS + PARTÍCULAS ──
+let logoInited = false;
+let sparkParticles = [];
+let bgParticles = [];
+let logoAnimFrame = null;
+let logoTick = 0;
+
+function initLogo() {
+  if (logoInited) return;
+  logoInited = true;
+  initBgParticles();
+  animateLogo();
+}
+
+// Dibuja el escudo hexagonal con JS cromado
+function drawLogo(tick) {
+  const c = document.getElementById('logo-canvas');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  const W = 320, H = 320, cx = W/2, cy = H/2;
+  ctx.clearRect(0, 0, W, H);
+
+  const pulse = Math.sin(tick * 0.03) * 0.5 + 0.5; // 0..1
+
+  // ── GLOW AMBIENTAL ──
+  const amb = ctx.createRadialGradient(cx, cy, 20, cx, cy, 155);
+  amb.addColorStop(0, `rgba(255,106,0,${0.22 + pulse*0.12})`);
+  amb.addColorStop(0.5, 'rgba(255,60,0,.06)');
+  amb.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = amb;
+  ctx.fillRect(0, 0, W, H);
+
+  // ── ESCUDO HEXAGONAL ──
+  const R = 118, r = 104;
+  const sides = 6;
+  // Sombra exterior profunda
+  ctx.save();
+  ctx.shadowColor = `rgba(255,106,0,${0.6 + pulse*0.3})`;
+  ctx.shadowBlur = 28 + pulse*14;
+  // Path hexágono exterior
+  hexPath(ctx, cx, cy, R);
+  // Relleno gradiente metálico naranja→negro
+  const gOuter = ctx.createLinearGradient(cx-R, cy-R, cx+R, cy+R);
+  gOuter.addColorStop(0,   '#ff8c00');
+  gOuter.addColorStop(0.3, '#ff6a00');
+  gOuter.addColorStop(0.6, '#c44800');
+  gOuter.addColorStop(1,   '#1a0800');
+  ctx.fillStyle = gOuter;
+  ctx.fill();
+  ctx.restore();
+
+  // Borde exterior cromado
+  ctx.save();
+  hexPath(ctx, cx, cy, R);
+  const gBorder = ctx.createLinearGradient(cx-R, cy-R, cx+R, cy+R);
+  gBorder.addColorStop(0, '#ffffff');
+  gBorder.addColorStop(0.25, '#ffcc88');
+  gBorder.addColorStop(0.5, '#ff8800');
+  gBorder.addColorStop(0.75, '#cc5500');
+  gBorder.addColorStop(1, '#ffffff');
+  ctx.strokeStyle = gBorder;
+  ctx.lineWidth = 6;
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+  ctx.restore();
+
+  // Hexágono interior (panel negro)
+  ctx.save();
+  hexPath(ctx, cx, cy, r);
+  const gInner = ctx.createRadialGradient(cx-20, cy-30, 10, cx, cy, r);
+  gInner.addColorStop(0, '#1e0f00');
+  gInner.addColorStop(0.5, '#0d0600');
+  gInner.addColorStop(1, '#000000');
+  ctx.fillStyle = gInner;
+  ctx.fill();
+  ctx.restore();
+
+  // Borde interior fino
+  ctx.save();
+  hexPath(ctx, cx, cy, r);
+  ctx.strokeStyle = 'rgba(255,140,0,.35)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.restore();
+
+  // Línea diagonal de corte (igual a la imagen)
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(cx + 55, cy - 108);
+  ctx.lineTo(cx - 45, cy + 112);
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = 'rgba(255,180,80,.2)';
+  ctx.stroke();
+  ctx.restore();
+
+  // ── LETRA J ──
+  ctx.save();
+  ctx.font = '900 88px "Arial Black", Impact, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  // Sombra 3D capas
+  for (let i = 5; i >= 1; i--) {
+    ctx.fillStyle = `rgba(${80+i*10},${30+i*5},0,${0.7})`;
+    ctx.fillText('J', cx - 34 + i, cy + 2 + i);
+  }
+  // Stroke exterior plateado
+  ctx.shadowColor = 'rgba(255,255,255,.4)';
+  ctx.shadowBlur = 8;
+  ctx.strokeStyle = '#e8e8e8';
+  ctx.lineWidth = 7;
+  ctx.lineJoin = 'round';
+  ctx.strokeText('J', cx - 34, cy + 2);
+  // Fill gradiente metálico
+  const gJ = ctx.createLinearGradient(cx-80, cy-50, cx-80, cy+50);
+  gJ.addColorStop(0, '#ffffff');
+  gJ.addColorStop(0.15, '#ffddaa');
+  gJ.addColorStop(0.4, '#ff8800');
+  gJ.addColorStop(0.65, '#cc5500');
+  gJ.addColorStop(0.85, '#ff9933');
+  gJ.addColorStop(1, '#ffeecc');
+  ctx.fillStyle = gJ;
+  ctx.fillText('J', cx - 34, cy + 2);
+  // Highlight reflejo
+  ctx.fillStyle = 'rgba(255,255,255,.18)';
+  ctx.fillText('J', cx - 34, cy + 2);
+  ctx.restore();
+
+  // ── LETRA S ──
+  ctx.save();
+  ctx.font = '900 88px "Arial Black", Impact, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  for (let i = 5; i >= 1; i--) {
+    ctx.fillStyle = `rgba(${80+i*10},${30+i*5},0,${0.7})`;
+    ctx.fillText('S', cx + 38 + i, cy + 2 + i);
+  }
+  ctx.shadowColor = 'rgba(255,255,255,.4)';
+  ctx.shadowBlur = 8;
+  ctx.strokeStyle = '#e8e8e8';
+  ctx.lineWidth = 7;
+  ctx.lineJoin = 'round';
+  ctx.strokeText('S', cx + 38, cy + 2);
+  const gS = ctx.createLinearGradient(cx+10, cy-50, cx+10, cy+50);
+  gS.addColorStop(0, '#ffffff');
+  gS.addColorStop(0.15, '#ffddaa');
+  gS.addColorStop(0.4, '#ff8800');
+  gS.addColorStop(0.65, '#cc5500');
+  gS.addColorStop(0.85, '#ff9933');
+  gS.addColorStop(1, '#ffeecc');
+  ctx.fillStyle = gS;
+  ctx.fillText('S', cx + 38, cy + 2);
+  ctx.fillStyle = 'rgba(255,255,255,.18)';
+  ctx.fillText('S', cx + 38, cy + 2);
+  ctx.restore();
+
+  // ── RAYO DIAGONAL ──
+  ctx.save();
+  const rx1 = cx + 52, ry1 = cy - 106;
+  const rx2 = cx - 42, ry2 = cy + 110;
+  // Glow del rayo
+  ctx.shadowColor = '#ffffff';
+  ctx.shadowBlur = 18 + pulse * 12;
+  // Cuerpo
+  ctx.beginPath();
+  ctx.moveTo(rx1 - 4, ry1);
+  ctx.lineTo(rx1 + 7, ry1);
+  ctx.lineTo(rx2 + 4, ry2);
+  ctx.lineTo(rx2 - 7, ry2);
+  ctx.closePath();
+  const gRay = ctx.createLinearGradient(rx1, ry1, rx2, ry2);
+  gRay.addColorStop(0, 'rgba(255,255,255,1)');
+  gRay.addColorStop(0.4, 'rgba(255,200,120,1)');
+  gRay.addColorStop(0.7, 'rgba(255,140,40,.9)');
+  gRay.addColorStop(1, 'rgba(255,255,255,.85)');
+  ctx.fillStyle = gRay;
+  ctx.fill();
+  // Punta superior
+  ctx.beginPath();
+  ctx.moveTo(rx1-3, ry1); ctx.lineTo(rx1+6, ry1); ctx.lineTo(rx1+4, ry1-32);
+  ctx.closePath(); ctx.fillStyle='#ffffff'; ctx.fill();
+  // Punta inferior
+  ctx.beginPath();
+  ctx.moveTo(rx2-3, ry2); ctx.lineTo(rx2+6, ry2); ctx.lineTo(rx2-4, ry2+32);
+  ctx.closePath(); ctx.fillStyle='#ffffff'; ctx.fill();
+  ctx.restore();
+
+  // ── LENS FLARE animado ──
+  const fx = cx + 8, fy = cy - 4;
+  ctx.save();
+  const flare = ctx.createRadialGradient(fx, fy, 0, fx, fy, 22 + pulse*10);
+  flare.addColorStop(0, `rgba(255,255,255,${0.9 + pulse*0.1})`);
+  flare.addColorStop(0.25, `rgba(255,210,120,${0.6})`);
+  flare.addColorStop(0.6, `rgba(255,106,0,${0.2})`);
+  flare.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = flare;
+  ctx.fillRect(fx-40, fy-40, 80, 80);
+  // Rayos de luz cruzados
+  ctx.globalAlpha = 0.25 + pulse*0.15;
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 1;
+  [[fx-35,fy,fx+35,fy],[fx,fy-35,fx,fy+35],
+   [fx-25,fy-25,fx+25,fy+25],[fx+25,fy-25,fx-25,fy+25]].forEach(([x1,y1,x2,y2])=>{
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  });
+  ctx.restore();
+
+  // ── PUNTOS DECORATIVOS en los vértices del hex ──
+  ctx.save();
+  for (let i = 0; i < 6; i++) {
+    const angle = (Math.PI/3)*i - Math.PI/6;
+    const vx = cx + R * Math.cos(angle);
+    const vy = cy + R * Math.sin(angle);
+    const dot = ctx.createRadialGradient(vx, vy, 0, vx, vy, 5);
+    dot.addColorStop(0, '#ffffff');
+    dot.addColorStop(0.5, '#ff8800');
+    dot.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = dot;
+    ctx.beginPath();
+    ctx.arc(vx, vy, 5, 0, Math.PI*2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function hexPath(ctx, cx, cy, r) {
+  ctx.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const a = (Math.PI/3)*i - Math.PI/6;
+    const x = cx + r * Math.cos(a);
+    const y = cy + r * Math.sin(a);
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+}
+
+// ── Chispas animadas ──
+function spawnSpark() {
+  const cx = 160 + (Math.random()-0.5)*40;
+  const cy = 160 + (Math.random()-0.5)*40;
+  const angle = Math.random()*Math.PI*2;
+  const speed = 0.8 + Math.random()*3;
+  sparkParticles.push({
+    x: cx, y: cy,
+    vx: Math.cos(angle)*speed,
+    vy: Math.sin(angle)*speed - 0.5,
+    life: 1,
+    size: 0.8 + Math.random()*2.2,
+    color: ['#ffffff','#ffcc88','#ff9940','#ffdd44'][Math.floor(Math.random()*4)]
+  });
+}
+
+function initBgParticles() {
+  const c = document.getElementById('bg-particles');
+  if (!c) return;
+  c.width = c.offsetWidth || 600;
+  c.height = c.offsetHeight || 500;
+  bgParticles = Array.from({length:70}, () => ({
+    x: Math.random()*c.width,
+    y: Math.random()*c.height,
+    r: 0.4 + Math.random()*1.4,
+    speed: 0.08 + Math.random()*0.25,
+    opacity: 0.08 + Math.random()*0.3,
+    drift: (Math.random()-0.5)*0.15
+  }));
+}
+
+function animateLogo() {
+  logoTick++;
+  const logo = document.getElementById('logo-canvas');
+  const bg   = document.getElementById('bg-particles');
+  if (!logo || !bg) return;
+
+  // Redibujar logo con animación
+  drawLogo(logoTick);
+
+  // Chispas
+  if (logoTick % 3 === 0) spawnSpark();
+  const lctx = logo.getContext('2d');
+  sparkParticles.forEach(p => {
+    p.x += p.vx; p.y += p.vy;
+    p.vy += 0.06;
+    p.vx *= 0.98;
+    p.life -= 0.022;
+    lctx.save();
+    lctx.globalAlpha = Math.max(0, p.life * p.life);
+    lctx.shadowColor = p.color;
+    lctx.shadowBlur = 5;
+    lctx.fillStyle = p.color;
+    lctx.beginPath();
+    lctx.arc(p.x, p.y, p.size * Math.max(0, p.life), 0, Math.PI*2);
+    lctx.fill();
+    lctx.restore();
+  });
+  sparkParticles = sparkParticles.filter(p => p.life > 0);
+
+  // Fondo partículas
+  if (bg.offsetWidth && bg.width !== bg.offsetWidth) {
+    bg.width = bg.offsetWidth;
+    bg.height = bg.offsetHeight;
+  }
+  const bctx = bg.getContext('2d');
+  bctx.clearRect(0, 0, bg.width, bg.height);
+  bgParticles.forEach(p => {
+    p.y -= p.speed;
+    p.x += p.drift;
+    if (p.y < -2) { p.y = bg.height + 2; p.x = Math.random()*bg.width; }
+    const pulse = Math.sin(logoTick*0.04 + p.x)*0.15;
+    bctx.beginPath();
+    bctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+    bctx.fillStyle = `rgba(255,106,0,${Math.max(0, p.opacity + pulse)})`;
+    bctx.fill();
+  });
+
+  logoAnimFrame = requestAnimationFrame(animateLogo);
+}
+
+// ── AQL ──
+const AQL_DATA = [
+  { key:'rango_1',               unidMin:1,      unidMax:1,      unidLabel:'1',              tipo:'Unidades', muestras:1,  libMuestras:1,   },
+  { key:'standpounch_2_8',       unidMin:2,      unidMax:8,      unidLabel:'2 a 8',          tipo:'Unidades', muestras:2,  libMuestras:2,   },
+  { key:'standpounch_9_15',      unidMin:9,      unidMax:15,     unidLabel:'9 a 15',         tipo:'Unidades', muestras:2,  libMuestras:2,   },
+  { key:'standpounch_16_25',     unidMin:16,     unidMax:25,     unidLabel:'16 a 25',        tipo:'Unidades', muestras:2,  libMuestras:2,   },
+  { key:'pounch3_26_50',         unidMin:26,     unidMax:50,     unidLabel:'26 a 50',        tipo:'Unidades', muestras:2,  libMuestras:3,   },
+  { key:'pounch3_51_90',         unidMin:51,     unidMax:90,     unidLabel:'51 a 90',        tipo:'Unidades', muestras:2,  libMuestras:4,   },
+  { key:'bolsafondo_91_150',     unidMin:91,     unidMax:150,    unidLabel:'91 a 150',       tipo:'Unidades', muestras:3,  libMuestras:8,   },
+  { key:'bolsafondo_151_280',    unidMin:151,    unidMax:280,    unidLabel:'151 a 280',      tipo:'Unidades', muestras:5,  libMuestras:13,  },
+  { key:'bolsafondo_281_500',    unidMin:281,    unidMax:500,    unidLabel:'281 a 500',      tipo:'Unidades', muestras:5,  libMuestras:20,  },
+  { key:'lienzos_501_1200',      unidMin:501,    unidMax:1200,   unidLabel:'501 a 1200',     tipo:'Unidades', muestras:8,  libMuestras:32,  },
+  { key:'lateral_1201_3200',     unidMin:1201,   unidMax:3200,   unidLabel:'1201 a 3200',    tipo:'Unidades', muestras:13, libMuestras:50,  },
+  { key:'lateral_3201_10000',    unidMin:3201,   unidMax:10000,  unidLabel:'3201 a 10000',   tipo:'Unidades', muestras:13, libMuestras:80,  },
+  { key:'lateral_10001_35000',   unidMin:10001,  unidMax:35000,  unidLabel:'10001 a 35000',  tipo:'Unidades', muestras:20, libMuestras:125, },
+  { key:'fondo_35001_150000',    unidMin:35001,  unidMax:150000, unidLabel:'35001 a 150000', tipo:'Unidades', muestras:32, libMuestras:200, },
+  { key:'fondo_150001_500000',   unidMin:150001, unidMax:499999, unidLabel:'150001 a 499999',tipo:'Unidades', muestras:32, libMuestras:315, },
+  { key:'bobinas',               unidMin:500000, unidMax:Infinity, unidLabel:'500000 a más', tipo:'Bobinas/Millares', muestras:50, libMuestras:500, },
+];
+
+function toggleTablaAQL() {
+  const wrap = document.getElementById('tabla-aql-wrap');
+  const icon = document.getElementById('tabla-aql-icon');
+  const btn  = document.getElementById('btn-tabla-aql');
+  const open = wrap.style.display === 'none';
+  wrap.style.display = open ? 'block' : 'none';
+  icon.textContent   = open ? '▲' : '▼';
+  btn.innerHTML      = `<span>${open ? '▲' : '▼'}</span> ${open ? 'Ocultar tabla' : 'Ver tabla'}`;
+}
+
+function renderAQLTabla() {
+  const tbody = document.getElementById('aql-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = AQL_DATA.map(r => {
+    const isBobina = r.tipo === 'Bobinas/Millares';
+    const rowStyle = isBobina ? 'background:rgba(255,106,0,.08);' : '';
+    return `<tr style="${rowStyle}">
+      <td style="font-family:var(--mono);font-size:11px">${r.unidLabel}</td>
+      <td class="val" style="text-align:center;font-size:18px;color:var(--accent)">${r.muestras}</td>
+    </tr>`;
+  }).join('');
+}
+
+function calcAQL() {
+  const tipo      = document.getElementById('aql-tipo').value;
+  const inputCant = document.getElementById('aql-cantidad');
+  const resultado = document.getElementById('aql-resultado');
+  const label     = document.getElementById('aql-cant-label');
+
+  if (!tipo) {
+    inputCant.disabled = true;
+    inputCant.style.opacity = '.4';
+    inputCant.style.cursor  = 'not-allowed';
+    inputCant.value = '';
+    resultado.style.display = 'none';
+    label.textContent = 'Cantidad del lote';
+    return;
+  }
+
+  inputCant.disabled = false;
+  inputCant.style.opacity = '1';
+  inputCant.style.cursor  = 'auto';
+
+  const esBobina = tipo === 'bobinas';
+  label.textContent = esBobina ? 'Cantidad de bobinas' : 'Cantidad en millares';
+
+  const cantidad = parseFloat(inputCant.value);
+  if (isNaN(cantidad) || cantidad <= 0) { resultado.style.display = 'none'; return; }
+
+  const unidades = esBobina ? cantidad : cantidad * 1000;
+  let fila = AQL_DATA.find(r => r.tipo === 'Unidades' && unidades >= r.unidMin && unidades <= r.unidMax);
+  if (!fila) fila = AQL_DATA.find(r => r.tipo === 'Bobinas/Millares');
+  if (!fila) { resultado.style.display = 'none'; return; }
+
+  document.getElementById('aql-res-muestras').textContent = fila.muestras;
+  resultado.style.display = 'block';
+}
+
+// Renderizar tabla al cargar
+window.addEventListener('DOMContentLoaded', renderAQLTabla);
+
+// Detener animación al salir de la sección
+const origShowSection = showSection;
+
+// ── ENCOGIMIENTO ──
+let encData = [];
+
+function calcEncogimiento() {
+  const md = parseFloat(document.getElementById('enc-md-final').value);
+  const td = parseFloat(document.getElementById('enc-td-final').value);
+
+  // MD
+  const mdBox = document.getElementById('enc-md-result');
+  if (!isNaN(md) && md >= 0) {
+    const pctMD = round(((50 - md) / 50) * 100, 2);
+    const mmMD  = round(50 - md, 2);
+    document.getElementById('enc-md-pct').textContent = pctMD;
+    document.getElementById('enc-md-mm').textContent  = `Reducción: ${mmMD} mm (50 → ${md} mm)`;
+    mdBox.style.display = 'flex';
+  } else {
+    mdBox.style.display = 'none';
+  }
+
+  // TD
+  const tdBox = document.getElementById('enc-td-result');
+  if (!isNaN(td) && td >= 0) {
+    const pctTD = round(((50 - td) / 50) * 100, 2);
+    const mmTD  = round(50 - td, 2);
+    document.getElementById('enc-td-pct').textContent = pctTD;
+    document.getElementById('enc-td-mm').textContent  = `Reducción: ${mmTD} mm (50 → ${td} mm)`;
+    tdBox.style.display = 'flex';
+  } else {
+    tdBox.style.display = 'none';
+  }
+}
+
+function addEncogimientoRow() {
+  const md = parseFloat(document.getElementById('enc-md-final').value);
+  const td = parseFloat(document.getElementById('enc-td-final').value);
+  if (isNaN(md) && isNaN(td)) { toast('Ingresa al menos un valor', false); return; }
+
+  const pctMD = !isNaN(md) ? round(((50 - md) / 50) * 100, 2) : null;
+  const pctTD = !isNaN(td) ? round(((50 - td) / 50) * 100, 2) : null;
+  encData.push({ md: isNaN(md) ? null : md, td: isNaN(td) ? null : td, pctMD, pctTD });
+  renderEncogimiento();
+  guardarEncogimiento({ md: isNaN(md)?null:md, td: isNaN(td)?null:td, pctMD, pctTD });
+  limpiarEncogimiento();
+}
+
+function limpiarEncogimiento() {
+  document.getElementById('enc-md-final').value = '';
+  document.getElementById('enc-td-final').value = '';
+  document.getElementById('enc-md-result').style.display = 'none';
+  document.getElementById('enc-td-result').style.display = 'none';
+}
+
+function renderEncogimiento() {
+  const tbody = document.getElementById('enc-tbody');
+  const count = encData.length;
+  document.getElementById('enc-count').textContent = count + ' medición' + (count !== 1 ? 'es' : '');
+
+  if (!count) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--muted);font-size:13px">Sin mediciones aún</td></tr>';
+    document.getElementById('enc-avg-box').style.display = 'none';
+    return;
+  }
+
+  tbody.innerHTML = encData.map((r, i) => `
+    <tr>
+      <td style="color:var(--muted)">${i+1}</td>
+      <td>${r.md ?? '—'}</td>
+      <td class="val" style="color:var(--accent)">${r.pctMD !== null ? r.pctMD + ' %' : '—'}</td>
+      <td>${r.td ?? '—'}</td>
+      <td class="val" style="color:var(--accent2)">${r.pctTD !== null ? r.pctTD + ' %' : '—'}</td>
+      <td><button onclick="deleteEnc(${i})" style="background:none;border:none;color:#f87171;cursor:pointer;font-size:16px;padding:2px 6px">✕</button></td>
+    </tr>`).join('');
+
+  const mdVals = encData.filter(r => r.pctMD !== null).map(r => r.pctMD);
+  const tdVals = encData.filter(r => r.pctTD !== null).map(r => r.pctTD);
+  document.getElementById('enc-avg-md').textContent = mdVals.length ? round(mdVals.reduce((a,b)=>a+b,0)/mdVals.length, 2) + ' %' : '—';
+  document.getElementById('enc-avg-td').textContent = tdVals.length ? round(tdVals.reduce((a,b)=>a+b,0)/tdVals.length, 2) + ' %' : '—';
+  document.getElementById('enc-avg-n').textContent  = count;
+  document.getElementById('enc-avg-box').style.display = 'flex';
+}
+
+function deleteEnc(i) { encData.splice(i,1); renderEncogimiento(); }
+function clearEncogimiento() { encData = []; renderEncogimiento(); }
+
+function copyEncogimiento() {
+  if (!encData.length) return;
+  const header = '#\tFinal MD (mm)\t% MD\tFinal TD (mm)\t% TD';
+  const rows = encData.map((r,i) =>
+    `${i+1}\t${r.md??''}\t${r.pctMD??''}\t${r.td??''}\t${r.pctTD??''}`
+  ).join('\n');
+  navigator.clipboard.writeText(header+'\n'+rows).then(() => toast('📋 Tabla copiada'));
+}
+
+</script>
+</body>
+</html>
